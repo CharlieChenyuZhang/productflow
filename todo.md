@@ -34,3 +34,9 @@
 - [x] Build CSV viewer with interactive table (sorting, filtering) and summary charts
 - [x] Add click-to-preview on uploaded files in Data tab
 - [x] Add file preview dialog/panel with proper rendering
+- [x] Add source URLs to each company research finding for fact-checking
+- [x] Update research schema to include sourceUrl field
+- [x] Update LLM prompt to extract source URLs with findings
+- [x] Display source links in Research tab findings UI
+- [x] Replace expanded example transcript cards with compact "Load Example Data" button
+- [x] Replace expanded example CSV cards with compact "Load Example Data" button

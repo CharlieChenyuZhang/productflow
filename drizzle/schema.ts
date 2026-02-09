@@ -138,6 +138,7 @@ export const researchFindings = mysqlTable("research_findings", {
   sentimentScore: int("sentimentScore"),
   category: varchar("category", { length: 255 }),
   tags: json("tags"),
+  sourceUrl: varchar("sourceUrl", { length: 1024 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

@@ -588,7 +588,8 @@ You must search your knowledge for:
 6. General market perception
 
 For each piece of feedback you find, provide:
-- The source (where it came from)
+- The source (where it came from, e.g., 'G2 Reviews', 'Reddit r/SaaS')
+- The source URL (a real, specific URL where this feedback can be found or verified — e.g., 'https://www.g2.com/products/notion/reviews', 'https://www.reddit.com/r/Notion/', 'https://news.ycombinator.com/item?id=12345'). Use real URLs that actually exist for the platform.
 - The type of source (review, forum, social_media, news, blog, support, other)
 - A title summarizing the feedback
 - The actual content/quote
@@ -605,6 +606,7 @@ Return valid JSON matching this schema:
   "companyDescription": "string (1-2 sentences about what the company does)",
   "findings": [{
     "source": "string (e.g., 'G2 Reviews', 'Reddit r/SaaS', 'Hacker News')",
+    "sourceUrl": "string (real URL where this feedback can be found, e.g., 'https://www.g2.com/products/notion/reviews')",
     "sourceType": "review"|"forum"|"social_media"|"news"|"blog"|"support"|"other",
     "title": "string",
     "content": "string (the actual feedback text, 2-4 sentences)",
@@ -636,6 +638,7 @@ Return valid JSON matching this schema:
                   type: "object",
                   properties: {
                     source: { type: "string" },
+                    sourceUrl: { type: "string" },
                     sourceType: { type: "string", enum: ["review", "forum", "social_media", "news", "blog", "support", "other"] },
                     title: { type: "string" },
                     content: { type: "string" },
@@ -644,7 +647,7 @@ Return valid JSON matching this schema:
                     category: { type: "string" },
                     tags: { type: "array", items: { type: "string" } }
                   },
-                  required: ["source", "sourceType", "title", "content", "sentiment", "sentimentScore", "category", "tags"],
+                  required: ["source", "sourceUrl", "sourceType", "title", "content", "sentiment", "sentimentScore", "category", "tags"],
                   additionalProperties: false
                 }
               }
@@ -674,6 +677,7 @@ Return valid JSON matching this schema:
           researchId,
           projectId,
           source: f.source,
+          sourceUrl: f.sourceUrl || null,
           sourceType: f.sourceType as any,
           title: f.title,
           content: f.content,

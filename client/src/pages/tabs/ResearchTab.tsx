@@ -626,8 +626,21 @@ function FindingRow({
               {finding.sentiment}
             </Badge>
           </div>
-          <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-xs text-muted-foreground">{finding.source}</span>
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            {finding.sourceUrl ? (
+              <a
+                href={finding.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-primary hover:underline flex items-center gap-1"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {finding.source}
+                <ExternalLink className="h-2.5 w-2.5" />
+              </a>
+            ) : (
+              <span className="text-xs text-muted-foreground">{finding.source}</span>
+            )}
             <span className="text-xs text-muted-foreground">&middot;</span>
             <Badge variant="secondary" className="text-xs h-5">
               {finding.category}
@@ -661,6 +674,18 @@ function FindingRow({
           <p className="text-sm text-muted-foreground leading-relaxed">
             {finding.content}
           </p>
+          {finding.sourceUrl && (
+            <a
+              href={finding.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ExternalLink className="h-3 w-3" />
+              View source: {finding.sourceUrl.length > 60 ? finding.sourceUrl.slice(0, 60) + '...' : finding.sourceUrl}
+            </a>
+          )}
           {tags.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {tags.map((tag: string, i: number) => (

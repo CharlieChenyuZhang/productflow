@@ -1,0 +1,1 @@
+ALTER TABLE `research_findings` ADD `sourceUrl` varchar(1024);

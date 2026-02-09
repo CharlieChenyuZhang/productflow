@@ -9,8 +9,8 @@ import {
   FileUp,
   AlertCircle,
   Sparkles,
-  User,
   Loader2,
+  Download,
 } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import FileViewerDialog from "@/components/FileViewerDialog";
@@ -100,31 +100,45 @@ export default function DataUploadTab({ projectId }: { projectId: number }) {
     [handleFileUpload]
   );
 
-  const loadExample = useCallback(
-    async (
-      name: string,
-      content: string,
-      fileType: "transcript" | "usage_data",
-      mimeType: string
-    ) => {
-      setLoadingExample(name);
-      try {
-        const base64 = stringToBase64(content);
+  const loadAllTranscripts = useCallback(async () => {
+    setLoadingExample("transcripts");
+    try {
+      for (const t of EXAMPLE_TRANSCRIPTS) {
         await uploadMutation.mutateAsync({
           projectId,
-          fileName: name,
-          fileType,
-          content: base64,
-          mimeType,
+          fileName: t.name,
+          fileType: "transcript",
+          content: stringToBase64(t.content),
+          mimeType: "text/plain",
         });
-      } catch {
-        // error handled by mutation
-      } finally {
-        setLoadingExample(null);
       }
-    },
-    [projectId, uploadMutation]
-  );
+      toast.success(`Loaded ${EXAMPLE_TRANSCRIPTS.length} example transcripts!`);
+    } catch {
+      // individual errors handled by mutation
+    } finally {
+      setLoadingExample(null);
+    }
+  }, [projectId, uploadMutation]);
+
+  const loadAllCsvFiles = useCallback(async () => {
+    setLoadingExample("csv");
+    try {
+      for (const c of EXAMPLE_CSV_FILES) {
+        await uploadMutation.mutateAsync({
+          projectId,
+          fileName: c.name,
+          fileType: "usage_data",
+          content: stringToBase64(c.content),
+          mimeType: "text/csv",
+        });
+      }
+      toast.success(`Loaded ${EXAMPLE_CSV_FILES.length} example CSV files!`);
+    } catch {
+      // individual errors handled by mutation
+    } finally {
+      setLoadingExample(null);
+    }
+  }, [projectId, uploadMutation]);
 
   const loadAllExamples = useCallback(async () => {
     setLoadingExample("all");
@@ -161,7 +175,7 @@ export default function DataUploadTab({ projectId }: { projectId: number }) {
 
   return (
     <div className="space-y-6">
-      {/* Quick Load Examples Banner */}
+      {/* Quick Load All Examples Banner */}
       {!hasAnyFiles && (
         <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
           <CardContent className="flex items-center justify-between py-4">
@@ -172,8 +186,7 @@ export default function DataUploadTab({ projectId }: { projectId: number }) {
               <div>
                 <h3 className="font-medium text-sm">Try with example data</h3>
                 <p className="text-xs text-muted-foreground">
-                  Load sample interview transcripts and usage metrics to see the
-                  full analysis pipeline in action
+                  Load {EXAMPLE_TRANSCRIPTS.length} sample interview transcripts and {EXAMPLE_CSV_FILES.length} CSV datasets to test the full analysis pipeline
                 </p>
               </div>
             </div>
@@ -239,55 +252,40 @@ export default function DataUploadTab({ projectId }: { projectId: number }) {
                   e.target.value = "";
                 }}
               />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => transcriptInputRef.current?.click()}
-                disabled={uploadMutation.isPending}
-              >
-                <Upload className="mr-2 h-3.5 w-3.5" />
-                {uploadMutation.isPending && loadingExample === null
-                  ? "Uploading..."
-                  : "Browse Files"}
-              </Button>
-            </div>
-
-            {/* Example Transcripts */}
-            <div>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                Example Transcripts
-              </p>
-              <div className="space-y-1.5">
-                {EXAMPLE_TRANSCRIPTS.map((ex) => (
-                  <button
-                    key={ex.name}
-                    className="w-full flex items-center gap-3 p-2.5 rounded-lg border border-border/60 hover:border-primary/40 hover:bg-primary/5 transition-all text-left group disabled:opacity-50"
-                    onClick={() =>
-                      loadExample(ex.name, ex.content, "transcript", "text/plain")
-                    }
-                    disabled={loadingExample !== null}
-                  >
-                    <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center shrink-0 group-hover:bg-primary/10">
-                      <User className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">{ex.label}</p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {ex.description}
-                      </p>
-                    </div>
-                    {loadingExample === ex.name ? (
-                      <Loader2 className="h-3.5 w-3.5 text-primary animate-spin shrink-0" />
-                    ) : (
-                      <Upload className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                    )}
-                  </button>
-                ))}
+              <div className="flex items-center justify-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => transcriptInputRef.current?.click()}
+                  disabled={uploadMutation.isPending}
+                >
+                  <Upload className="mr-2 h-3.5 w-3.5" />
+                  Browse Files
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={loadAllTranscripts}
+                  disabled={loadingExample !== null}
+                  className="text-primary hover:text-primary"
+                >
+                  {loadingExample === "transcripts" ? (
+                    <>
+                      <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="mr-2 h-3.5 w-3.5" />
+                      Load {EXAMPLE_TRANSCRIPTS.length} Examples
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
 
             {transcripts.length > 0 && (
-              <div className="space-y-2 pt-2 border-t">
+              <div className="space-y-2">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Uploaded Files ({transcripts.length})
                 </p>
@@ -350,55 +348,40 @@ export default function DataUploadTab({ projectId }: { projectId: number }) {
                   e.target.value = "";
                 }}
               />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => csvInputRef.current?.click()}
-                disabled={uploadMutation.isPending}
-              >
-                <Upload className="mr-2 h-3.5 w-3.5" />
-                {uploadMutation.isPending && loadingExample === null
-                  ? "Uploading..."
-                  : "Browse Files"}
-              </Button>
-            </div>
-
-            {/* Example CSV Files */}
-            <div>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                Example Data Files
-              </p>
-              <div className="space-y-1.5">
-                {EXAMPLE_CSV_FILES.map((ex) => (
-                  <button
-                    key={ex.name}
-                    className="w-full flex items-center gap-3 p-2.5 rounded-lg border border-border/60 hover:border-primary/40 hover:bg-primary/5 transition-all text-left group disabled:opacity-50"
-                    onClick={() =>
-                      loadExample(ex.name, ex.content, "usage_data", "text/csv")
-                    }
-                    disabled={loadingExample !== null}
-                  >
-                    <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center shrink-0 group-hover:bg-primary/10">
-                      <Table2 className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">{ex.label}</p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {ex.description}
-                      </p>
-                    </div>
-                    {loadingExample === ex.name ? (
-                      <Loader2 className="h-3.5 w-3.5 text-primary animate-spin shrink-0" />
-                    ) : (
-                      <Upload className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                    )}
-                  </button>
-                ))}
+              <div className="flex items-center justify-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => csvInputRef.current?.click()}
+                  disabled={uploadMutation.isPending}
+                >
+                  <Upload className="mr-2 h-3.5 w-3.5" />
+                  Browse Files
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={loadAllCsvFiles}
+                  disabled={loadingExample !== null}
+                  className="text-primary hover:text-primary"
+                >
+                  {loadingExample === "csv" ? (
+                    <>
+                      <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="mr-2 h-3.5 w-3.5" />
+                      Load {EXAMPLE_CSV_FILES.length} Examples
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
 
             {usageData.length > 0 && (
-              <div className="space-y-2 pt-2 border-t">
+              <div className="space-y-2">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Uploaded Files ({usageData.length})
                 </p>
