@@ -26,6 +26,14 @@ vi.mock("./db", () => ({
   createManyTasks: vi.fn(),
   deleteProposalTasks: vi.fn(),
   updateTaskStatus: vi.fn(),
+  // Company Research
+  createCompanyResearch: vi.fn(),
+  getProjectResearch: vi.fn(),
+  getResearchById: vi.fn(),
+  updateCompanyResearch: vi.fn(),
+  deleteCompanyResearch: vi.fn(),
+  createManyFindings: vi.fn(),
+  getResearchFindings: vi.fn(),
 }));
 
 vi.mock("./storage", () => ({
@@ -339,6 +347,145 @@ describe("task.updateStatus", () => {
 
     expect(result).toEqual({ success: true });
     expect(db.updateTaskStatus).toHaveBeenCalledWith(1, "done");
+  });
+});
+
+// ─── Company Research ───
+describe("research.list", () => {
+  it("returns research for a project", async () => {
+    const mockResearch = [
+      { id: 1, projectId: 1, companyUrl: "https://stripe.com", status: "completed" },
+    ];
+    vi.mocked(db.getProjectResearch).mockResolvedValue(mockResearch as any);
+
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.research.list({ projectId: 1 });
+
+    expect(result).toEqual(mockResearch);
+    expect(db.getProjectResearch).toHaveBeenCalledWith(1);
+  });
+
+  it("throws UNAUTHORIZED for unauthenticated user", async () => {
+    const ctx = createUnauthContext();
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.research.list({ projectId: 1 })).rejects.toThrow();
+  });
+});
+
+describe("research.get", () => {
+  it("returns research by id", async () => {
+    const mockResearch = { id: 1, projectId: 1, companyUrl: "https://stripe.com", status: "completed" };
+    vi.mocked(db.getResearchById).mockResolvedValue(mockResearch as any);
+
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.research.get({ id: 1, projectId: 1 });
+
+    expect(result).toEqual(mockResearch);
+    expect(db.getResearchById).toHaveBeenCalledWith(1, 1);
+  });
+});
+
+describe("research.getFindings", () => {
+  it("returns findings for a research", async () => {
+    const mockFindings = [
+      { id: 1, researchId: 1, title: "Great product", sentiment: "positive" },
+      { id: 2, researchId: 1, title: "Too expensive", sentiment: "negative" },
+    ];
+    vi.mocked(db.getResearchFindings).mockResolvedValue(mockFindings as any);
+
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.research.getFindings({ researchId: 1 });
+
+    expect(result).toEqual(mockFindings);
+    expect(db.getResearchFindings).toHaveBeenCalledWith(1);
+  });
+});
+
+describe("research.start", () => {
+  it("creates research and starts async processing", async () => {
+    vi.mocked(db.getProjectById).mockResolvedValue({ id: 1, userId: 1, name: "Test Project" } as any);
+    vi.mocked(db.createCompanyResearch).mockResolvedValue(7);
+
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.research.start({
+      projectId: 1,
+      companyUrl: "stripe.com",
+    });
+
+    expect(result).toEqual({ id: 7 });
+    expect(db.createCompanyResearch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        projectId: 1,
+        userId: 1,
+        companyUrl: "https://stripe.com",
+        status: "searching",
+      })
+    );
+  });
+
+  it("normalizes URLs without protocol", async () => {
+    vi.mocked(db.getProjectById).mockResolvedValue({ id: 1, userId: 1, name: "Test" } as any);
+    vi.mocked(db.createCompanyResearch).mockResolvedValue(8);
+
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    await caller.research.start({ projectId: 1, companyUrl: "notion.so" });
+
+    expect(db.createCompanyResearch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        companyUrl: "https://notion.so",
+      })
+    );
+  });
+
+  it("preserves URLs with protocol", async () => {
+    vi.mocked(db.getProjectById).mockResolvedValue({ id: 1, userId: 1, name: "Test" } as any);
+    vi.mocked(db.createCompanyResearch).mockResolvedValue(9);
+
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    await caller.research.start({ projectId: 1, companyUrl: "https://figma.com" });
+
+    expect(db.createCompanyResearch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        companyUrl: "https://figma.com",
+      })
+    );
+  });
+
+  it("throws when project not found", async () => {
+    vi.mocked(db.getProjectById).mockResolvedValue(null);
+
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    await expect(
+      caller.research.start({ projectId: 999, companyUrl: "stripe.com" })
+    ).rejects.toThrow("Project not found");
+  });
+
+  it("rejects empty URL", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    await expect(
+      caller.research.start({ projectId: 1, companyUrl: "" })
+    ).rejects.toThrow();
+  });
+});
+
+describe("research.delete", () => {
+  it("deletes research and findings", async () => {
+    vi.mocked(db.deleteCompanyResearch).mockResolvedValue(undefined);
+
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.research.delete({ id: 1, projectId: 1 });
+
+    expect(result).toEqual({ success: true });
+    expect(db.deleteCompanyResearch).toHaveBeenCalledWith(1, 1);
   });
 });
 

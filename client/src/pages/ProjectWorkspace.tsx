@@ -2,12 +2,13 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, FileText, BarChart3, Lightbulb, ListChecks } from "lucide-react";
+import { ArrowLeft, FileText, BarChart3, Lightbulb, ListChecks, Globe } from "lucide-react";
 import { useLocation, useParams } from "wouter";
 import DataUploadTab from "./tabs/DataUploadTab";
 import InsightsTab from "./tabs/InsightsTab";
 import ProposalsTab from "./tabs/ProposalsTab";
 import TasksTab from "./tabs/TasksTab";
+import ResearchTab from "./tabs/ResearchTab";
 
 export default function ProjectWorkspace() {
   return (
@@ -76,6 +77,9 @@ function WorkspaceContent() {
           <TabsTrigger value="data" className="gap-2">
             <FileText className="h-3.5 w-3.5" /> Data
           </TabsTrigger>
+          <TabsTrigger value="research" className="gap-2">
+            <Globe className="h-3.5 w-3.5" /> Research
+          </TabsTrigger>
           <TabsTrigger value="insights" className="gap-2">
             <BarChart3 className="h-3.5 w-3.5" /> Insights
           </TabsTrigger>
@@ -89,6 +93,9 @@ function WorkspaceContent() {
 
         <TabsContent value="data" className="mt-6">
           <DataUploadTab projectId={projectId} />
+        </TabsContent>
+        <TabsContent value="research" className="mt-6">
+          <ResearchTab projectId={projectId} />
         </TabsContent>
         <TabsContent value="insights" className="mt-6">
           <InsightsTab projectId={projectId} />

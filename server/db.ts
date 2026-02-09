@@ -7,6 +7,8 @@ import {
   analyses, InsertAnalysis, Analysis,
   featureProposals, InsertFeatureProposal, FeatureProposal,
   tasks, InsertTask, Task,
+  companyResearch, InsertCompanyResearch, CompanyResearch,
+  researchFindings, InsertResearchFinding, ResearchFinding,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -92,6 +94,8 @@ export async function deleteProject(projectId: number, userId: number): Promise<
   await db.delete(featureProposals).where(eq(featureProposals.projectId, projectId));
   await db.delete(analyses).where(eq(analyses.projectId, projectId));
   await db.delete(dataFiles).where(eq(dataFiles.projectId, projectId));
+  await db.delete(researchFindings).where(eq(researchFindings.projectId, projectId));
+  await db.delete(companyResearch).where(eq(companyResearch.projectId, projectId));
   await db.delete(projects).where(and(eq(projects.id, projectId), eq(projects.userId, userId)));
 }
 
@@ -208,20 +212,69 @@ export async function deleteProposalTasks(featureProposalId: number): Promise<vo
   await db.delete(tasks).where(eq(tasks.featureProposalId, featureProposalId));
 }
 
+// ─── Company Research ───
+export async function createCompanyResearch(data: InsertCompanyResearch): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(companyResearch).values(data);
+  return result[0].insertId;
+}
+
+export async function getProjectResearch(projectId: number): Promise<CompanyResearch[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(companyResearch).where(eq(companyResearch.projectId, projectId)).orderBy(desc(companyResearch.createdAt));
+}
+
+export async function getResearchById(researchId: number, projectId: number): Promise<CompanyResearch | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(companyResearch).where(and(eq(companyResearch.id, researchId), eq(companyResearch.projectId, projectId))).limit(1);
+  return result[0];
+}
+
+export async function updateCompanyResearch(researchId: number, data: Partial<Omit<CompanyResearch, "id" | "createdAt">>): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(companyResearch).set(data).where(eq(companyResearch.id, researchId));
+}
+
+export async function deleteCompanyResearch(researchId: number, projectId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(researchFindings).where(and(eq(researchFindings.researchId, researchId), eq(researchFindings.projectId, projectId)));
+  await db.delete(companyResearch).where(and(eq(companyResearch.id, researchId), eq(companyResearch.projectId, projectId)));
+}
+
+export async function createManyFindings(findings: InsertResearchFinding[]): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (findings.length === 0) return;
+  await db.insert(researchFindings).values(findings);
+}
+
+export async function getResearchFindings(researchId: number): Promise<ResearchFinding[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(researchFindings).where(eq(researchFindings.researchId, researchId)).orderBy(desc(researchFindings.createdAt));
+}
+
 // ─── Stats ───
 export async function getProjectStats(projectId: number) {
   const db = await getDb();
-  if (!db) return { files: 0, analyses: 0, proposals: 0, tasks: 0 };
+  if (!db) return { files: 0, analyses: 0, proposals: 0, tasks: 0, research: 0 };
   const [files, analysesList, proposalsList, tasksList] = await Promise.all([
     db.select().from(dataFiles).where(eq(dataFiles.projectId, projectId)),
     db.select().from(analyses).where(eq(analyses.projectId, projectId)),
     db.select().from(featureProposals).where(eq(featureProposals.projectId, projectId)),
     db.select().from(tasks).where(eq(tasks.projectId, projectId)),
   ]);
+  const researchList = await db.select().from(companyResearch).where(eq(companyResearch.projectId, projectId));
   return {
     files: files.length,
     analyses: analysesList.length,
     proposals: proposalsList.length,
     tasks: tasksList.length,
+    research: researchList.length,
   };
 }

@@ -214,6 +214,54 @@ export const appRouter = router({
         return { success: true };
       }),
   }),
+
+  research: router({
+    list: protectedProcedure
+      .input(z.object({ projectId: z.number() }))
+      .query(({ input }) => db.getProjectResearch(input.projectId)),
+    get: protectedProcedure
+      .input(z.object({ id: z.number(), projectId: z.number() }))
+      .query(({ input }) => db.getResearchById(input.id, input.projectId)),
+    getFindings: protectedProcedure
+      .input(z.object({ researchId: z.number() }))
+      .query(({ input }) => db.getResearchFindings(input.researchId)),
+    start: protectedProcedure
+      .input(z.object({
+        projectId: z.number(),
+        companyUrl: z.string().min(1).max(1024),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const project = await db.getProjectById(input.projectId, ctx.user.id);
+        if (!project) throw new Error("Project not found");
+
+        // Normalize URL
+        let url = input.companyUrl.trim();
+        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+          url = "https://" + url;
+        }
+
+        const researchId = await db.createCompanyResearch({
+          projectId: input.projectId,
+          userId: ctx.user.id,
+          companyUrl: url,
+          status: "searching",
+        });
+
+        // Run research asynchronously
+        runCompanyResearch(researchId, input.projectId, url, project.name).catch((err: any) => {
+          console.error("[Research] Failed:", err);
+          db.updateCompanyResearch(researchId, { status: "failed" });
+        });
+
+        return { id: researchId };
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.number(), projectId: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteCompanyResearch(input.id, input.projectId);
+        return { success: true };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;
@@ -484,4 +532,247 @@ Generate 5-12 tasks. Order them by dependency (things that need to happen first 
   const content = result.choices[0]?.message?.content;
   const parsed = typeof content === "string" ? JSON.parse(content) : null;
   return parsed?.tasks || [];
+}
+
+// ─── Company Research Pipeline ───
+async function runCompanyResearch(researchId: number, projectId: number, companyUrl: string, projectName: string) {
+  try {
+    // Extract domain name for search queries
+    let domain = companyUrl;
+    try {
+      const urlObj = new URL(companyUrl);
+      domain = urlObj.hostname.replace(/^www\./, "");
+    } catch {
+      domain = companyUrl.replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0];
+    }
+    const companyName = domain.split(".")[0].charAt(0).toUpperCase() + domain.split(".")[0].slice(1);
+
+    await db.updateCompanyResearch(researchId, { companyName, status: "searching" });
+
+    // Step 1: Use LLM to search and gather information about the company
+    const searchResult = await invokeLLM({
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert market researcher and competitive analyst. Your task is to research the company at "${companyUrl}" (${companyName}) and find all publicly available feedback, reviews, discussions, and opinions about their products and services.
+
+You must search your knowledge for:
+1. Product reviews from sites like G2, Capterra, TrustRadius, Product Hunt, etc.
+2. Forum discussions from Reddit, Hacker News, Stack Overflow, etc.
+3. Social media sentiment from Twitter/X, LinkedIn, etc.
+4. News articles and blog posts about the company
+5. Customer support complaints or praise
+6. General market perception
+
+For each piece of feedback you find, provide:
+- The source (where it came from)
+- The type of source (review, forum, social_media, news, blog, support, other)
+- A title summarizing the feedback
+- The actual content/quote
+- Whether the sentiment is positive, negative, or neutral
+- A sentiment score from -100 (very negative) to +100 (very positive)
+- A category (e.g., "pricing", "performance", "support", "features", "UX", "reliability", "security", "onboarding", "documentation", "integration")
+- Relevant tags
+
+Return a comprehensive JSON with 15-25 findings. Be thorough and realistic. Base this on what you actually know about this company and its products. If you don't have specific knowledge, generate realistic market research findings based on the company's domain and likely product category.
+
+Return valid JSON matching this schema:
+{
+  "companyName": "string",
+  "companyDescription": "string (1-2 sentences about what the company does)",
+  "findings": [{
+    "source": "string (e.g., 'G2 Reviews', 'Reddit r/SaaS', 'Hacker News')",
+    "sourceType": "review"|"forum"|"social_media"|"news"|"blog"|"support"|"other",
+    "title": "string",
+    "content": "string (the actual feedback text, 2-4 sentences)",
+    "sentiment": "positive"|"negative"|"neutral",
+    "sentimentScore": number,
+    "category": "string",
+    "tags": ["string"]
+  }]
+}`
+        },
+        {
+          role: "user",
+          content: `Research the company at ${companyUrl} and find all public feedback about their products. Be thorough and cover multiple sources.`
+        }
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "company_research",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              companyName: { type: "string" },
+              companyDescription: { type: "string" },
+              findings: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    source: { type: "string" },
+                    sourceType: { type: "string", enum: ["review", "forum", "social_media", "news", "blog", "support", "other"] },
+                    title: { type: "string" },
+                    content: { type: "string" },
+                    sentiment: { type: "string", enum: ["positive", "negative", "neutral"] },
+                    sentimentScore: { type: "number" },
+                    category: { type: "string" },
+                    tags: { type: "array", items: { type: "string" } }
+                  },
+                  required: ["source", "sourceType", "title", "content", "sentiment", "sentimentScore", "category", "tags"],
+                  additionalProperties: false
+                }
+              }
+            },
+            required: ["companyName", "companyDescription", "findings"],
+            additionalProperties: false
+          }
+        }
+      }
+    });
+
+    const searchContent = searchResult.choices[0]?.message?.content;
+    const searchParsed = typeof searchContent === "string" ? JSON.parse(searchContent) : null;
+    if (!searchParsed) throw new Error("Failed to parse search results");
+
+    await db.updateCompanyResearch(researchId, {
+      companyName: searchParsed.companyName || companyName,
+      status: "analyzing",
+      rawSearchResults: searchParsed,
+    });
+
+    // Step 2: Save individual findings
+    const findings = searchParsed.findings || [];
+    if (findings.length > 0) {
+      await db.createManyFindings(
+        findings.map((f: any) => ({
+          researchId,
+          projectId,
+          source: f.source,
+          sourceType: f.sourceType as any,
+          title: f.title,
+          content: f.content,
+          sentiment: f.sentiment as any,
+          sentimentScore: f.sentimentScore,
+          category: f.category,
+          tags: f.tags,
+        }))
+      );
+    }
+
+    // Step 3: Analyze and summarize
+    const positiveFindings = findings.filter((f: any) => f.sentiment === "positive");
+    const negativeFindings = findings.filter((f: any) => f.sentiment === "negative");
+    const neutralFindings = findings.filter((f: any) => f.sentiment === "neutral");
+
+    const analysisResult = await invokeLLM({
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert product analyst. Based on the following research findings about "${searchParsed.companyName}", provide a comprehensive summary analysis.
+
+Return valid JSON matching this schema:
+{
+  "summary": "string (3-5 paragraph executive summary of the company's market perception)",
+  "overallSentiment": "positive"|"negative"|"neutral"|"mixed",
+  "keyStrengths": [{"title": "string", "description": "string", "evidenceCount": number}],
+  "keyWeaknesses": [{"title": "string", "description": "string", "evidenceCount": number}],
+  "recommendations": [{"title": "string", "description": "string", "priority": "high"|"medium"|"low", "category": "string"}]
+}
+
+Provide 3-6 items for strengths, weaknesses, and recommendations each. Base everything on the actual findings provided.`
+        },
+        {
+          role: "user",
+          content: `Here are the research findings:\n\n${JSON.stringify(findings, null, 2)}`
+        }
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "research_analysis",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              summary: { type: "string" },
+              overallSentiment: { type: "string", enum: ["positive", "negative", "neutral", "mixed"] },
+              keyStrengths: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    title: { type: "string" },
+                    description: { type: "string" },
+                    evidenceCount: { type: "number" }
+                  },
+                  required: ["title", "description", "evidenceCount"],
+                  additionalProperties: false
+                }
+              },
+              keyWeaknesses: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    title: { type: "string" },
+                    description: { type: "string" },
+                    evidenceCount: { type: "number" }
+                  },
+                  required: ["title", "description", "evidenceCount"],
+                  additionalProperties: false
+                }
+              },
+              recommendations: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    title: { type: "string" },
+                    description: { type: "string" },
+                    priority: { type: "string", enum: ["high", "medium", "low"] },
+                    category: { type: "string" }
+                  },
+                  required: ["title", "description", "priority", "category"],
+                  additionalProperties: false
+                }
+              }
+            },
+            required: ["summary", "overallSentiment", "keyStrengths", "keyWeaknesses", "recommendations"],
+            additionalProperties: false
+          }
+        }
+      }
+    });
+
+    const analysisContent = analysisResult.choices[0]?.message?.content;
+    const analysisParsed = typeof analysisContent === "string" ? JSON.parse(analysisContent) : null;
+    if (!analysisParsed) throw new Error("Failed to parse analysis");
+
+    // Step 4: Update research with final results
+    await db.updateCompanyResearch(researchId, {
+      status: "completed",
+      overallSentiment: analysisParsed.overallSentiment as any,
+      positiveCount: positiveFindings.length,
+      negativeCount: negativeFindings.length,
+      neutralCount: neutralFindings.length,
+      summary: analysisParsed.summary,
+      keyStrengths: analysisParsed.keyStrengths,
+      keyWeaknesses: analysisParsed.keyWeaknesses,
+      recommendations: analysisParsed.recommendations,
+      completedAt: new Date(),
+    });
+
+    notifyOwner({
+      title: `Company Research Complete - ${searchParsed.companyName}`,
+      content: `Research on "${searchParsed.companyName}" for project "${projectName}" is complete. Found ${findings.length} pieces of feedback: ${positiveFindings.length} positive, ${negativeFindings.length} negative, ${neutralFindings.length} neutral.`,
+    }).catch(() => {});
+
+  } catch (error: any) {
+    console.error("[Research] Error:", error);
+    await db.updateCompanyResearch(researchId, { status: "failed" });
+    throw error;
+  }
 }

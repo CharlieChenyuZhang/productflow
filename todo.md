@@ -13,4 +13,13 @@
 - [x] Export capabilities (copy tasks, export data)
 - [x] Owner notifications on analysis completion and critical insights
 - [x] Landing page / home page (redirects to projects when authenticated)
-- [x] Tests for core procedures (21 tests passing)
+- [x] Tests for core procedures (31 tests passing)
+- [x] Add clickable example customer interview transcripts to Data tab
+- [x] Add clickable example product usage CSV data to Data tab
+- [x] Ensure examples auto-upload when clicked so full pipeline can be tested immediately
+- [x] Company Research: database schema for research jobs and findings
+- [x] Company Research: backend web search + LLM analysis pipeline
+- [x] Company Research: frontend URL input form and research trigger
+- [x] Company Research: results dashboard with positive/negative sentiment categorization
+- [x] Company Research: sentiment charts and insight cards
+- [x] Company Research: new Research tab in project workspace

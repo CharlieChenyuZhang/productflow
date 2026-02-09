@@ -8,22 +8,25 @@ import {
   Trash2,
   FileUp,
   AlertCircle,
+  Sparkles,
+  User,
+  Loader2,
 } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import {
+  EXAMPLE_TRANSCRIPTS,
+  EXAMPLE_CSV_FILES,
+  stringToBase64,
+} from "@/lib/exampleData";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-const ALLOWED_TEXT_TYPES = [
-  "text/plain",
-  "text/markdown",
-  "text/csv",
-  "application/csv",
-];
 
 export default function DataUploadTab({ projectId }: { projectId: number }) {
   const utils = trpc.useUtils();
   const { data: files, isLoading } = trpc.dataFile.list.useQuery({ projectId });
+  const [loadingExample, setLoadingExample] = useState<string | null>(null);
 
   const uploadMutation = trpc.dataFile.upload.useMutation({
     onSuccess: () => {
@@ -53,12 +56,10 @@ export default function DataUploadTab({ projectId }: { projectId: number }) {
         toast.error("File too large. Maximum size is 10MB.");
         return;
       }
-
       if (fileType === "usage_data" && !file.name.endsWith(".csv")) {
         toast.error("Usage data must be a CSV file.");
         return;
       }
-
       if (
         fileType === "transcript" &&
         !file.name.endsWith(".txt") &&
@@ -67,7 +68,6 @@ export default function DataUploadTab({ projectId }: { projectId: number }) {
         toast.error("Transcripts must be .txt or .md files.");
         return;
       }
-
       const reader = new FileReader();
       reader.onload = () => {
         const base64 = (reader.result as string).split(",")[1];
@@ -94,11 +94,104 @@ export default function DataUploadTab({ projectId }: { projectId: number }) {
     [handleFileUpload]
   );
 
+  const loadExample = useCallback(
+    async (
+      name: string,
+      content: string,
+      fileType: "transcript" | "usage_data",
+      mimeType: string
+    ) => {
+      setLoadingExample(name);
+      try {
+        const base64 = stringToBase64(content);
+        await uploadMutation.mutateAsync({
+          projectId,
+          fileName: name,
+          fileType,
+          content: base64,
+          mimeType,
+        });
+      } catch {
+        // error handled by mutation
+      } finally {
+        setLoadingExample(null);
+      }
+    },
+    [projectId, uploadMutation]
+  );
+
+  const loadAllExamples = useCallback(async () => {
+    setLoadingExample("all");
+    try {
+      for (const t of EXAMPLE_TRANSCRIPTS) {
+        await uploadMutation.mutateAsync({
+          projectId,
+          fileName: t.name,
+          fileType: "transcript",
+          content: stringToBase64(t.content),
+          mimeType: "text/plain",
+        });
+      }
+      for (const c of EXAMPLE_CSV_FILES) {
+        await uploadMutation.mutateAsync({
+          projectId,
+          fileName: c.name,
+          fileType: "usage_data",
+          content: stringToBase64(c.content),
+          mimeType: "text/csv",
+        });
+      }
+      toast.success("All example files loaded!");
+    } catch {
+      // individual errors handled by mutation
+    } finally {
+      setLoadingExample(null);
+    }
+  }, [projectId, uploadMutation]);
+
   const transcripts = files?.filter((f) => f.fileType === "transcript") ?? [];
   const usageData = files?.filter((f) => f.fileType === "usage_data") ?? [];
+  const hasAnyFiles = (files?.length ?? 0) > 0;
 
   return (
     <div className="space-y-6">
+      {/* Quick Load Examples Banner */}
+      {!hasAnyFiles && (
+        <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
+          <CardContent className="flex items-center justify-between py-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <Sparkles className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-medium text-sm">Try with example data</h3>
+                <p className="text-xs text-muted-foreground">
+                  Load sample interview transcripts and usage metrics to see the
+                  full analysis pipeline in action
+                </p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              onClick={loadAllExamples}
+              disabled={loadingExample !== null}
+            >
+              {loadingExample === "all" ? (
+                <>
+                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                  Loading...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="mr-2 h-3.5 w-3.5" />
+                  Load All Examples
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid md:grid-cols-2 gap-6">
         {/* Transcript Upload */}
         <Card>
@@ -108,9 +201,9 @@ export default function DataUploadTab({ projectId }: { projectId: number }) {
               Customer Interview Transcripts
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <div
-              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+              className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
                 dragOver === "transcript"
                   ? "border-primary bg-primary/5"
                   : "border-border hover:border-primary/40"
@@ -122,7 +215,7 @@ export default function DataUploadTab({ projectId }: { projectId: number }) {
               onDragLeave={() => setDragOver(null)}
               onDrop={(e) => handleDrop(e, "transcript")}
             >
-              <FileUp className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+              <FileUp className="h-7 w-7 text-muted-foreground mx-auto mb-2" />
               <p className="text-sm font-medium mb-1">
                 Drop transcript files here
               </p>
@@ -147,12 +240,51 @@ export default function DataUploadTab({ projectId }: { projectId: number }) {
                 disabled={uploadMutation.isPending}
               >
                 <Upload className="mr-2 h-3.5 w-3.5" />
-                {uploadMutation.isPending ? "Uploading..." : "Browse Files"}
+                {uploadMutation.isPending && loadingExample === null
+                  ? "Uploading..."
+                  : "Browse Files"}
               </Button>
             </div>
 
+            {/* Example Transcripts */}
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                Example Transcripts
+              </p>
+              <div className="space-y-1.5">
+                {EXAMPLE_TRANSCRIPTS.map((ex) => (
+                  <button
+                    key={ex.name}
+                    className="w-full flex items-center gap-3 p-2.5 rounded-lg border border-border/60 hover:border-primary/40 hover:bg-primary/5 transition-all text-left group disabled:opacity-50"
+                    onClick={() =>
+                      loadExample(ex.name, ex.content, "transcript", "text/plain")
+                    }
+                    disabled={loadingExample !== null}
+                  >
+                    <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center shrink-0 group-hover:bg-primary/10">
+                      <User className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{ex.label}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {ex.description}
+                      </p>
+                    </div>
+                    {loadingExample === ex.name ? (
+                      <Loader2 className="h-3.5 w-3.5 text-primary animate-spin shrink-0" />
+                    ) : (
+                      <Upload className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {transcripts.length > 0 && (
-              <div className="mt-4 space-y-2">
+              <div className="space-y-2 pt-2 border-t">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Uploaded Files ({transcripts.length})
+                </p>
                 {transcripts.map((file) => (
                   <FileRow
                     key={file.id}
@@ -175,9 +307,9 @@ export default function DataUploadTab({ projectId }: { projectId: number }) {
               Product Usage Data
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <div
-              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+              className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
                 dragOver === "usage"
                   ? "border-primary bg-primary/5"
                   : "border-border hover:border-primary/40"
@@ -189,10 +321,8 @@ export default function DataUploadTab({ projectId }: { projectId: number }) {
               onDragLeave={() => setDragOver(null)}
               onDrop={(e) => handleDrop(e, "usage_data")}
             >
-              <FileUp className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-              <p className="text-sm font-medium mb-1">
-                Drop CSV files here
-              </p>
+              <FileUp className="h-7 w-7 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm font-medium mb-1">Drop CSV files here</p>
               <p className="text-xs text-muted-foreground mb-3">
                 Product analytics, usage metrics, survey results
               </p>
@@ -214,12 +344,51 @@ export default function DataUploadTab({ projectId }: { projectId: number }) {
                 disabled={uploadMutation.isPending}
               >
                 <Upload className="mr-2 h-3.5 w-3.5" />
-                {uploadMutation.isPending ? "Uploading..." : "Browse Files"}
+                {uploadMutation.isPending && loadingExample === null
+                  ? "Uploading..."
+                  : "Browse Files"}
               </Button>
             </div>
 
+            {/* Example CSV Files */}
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                Example Data Files
+              </p>
+              <div className="space-y-1.5">
+                {EXAMPLE_CSV_FILES.map((ex) => (
+                  <button
+                    key={ex.name}
+                    className="w-full flex items-center gap-3 p-2.5 rounded-lg border border-border/60 hover:border-primary/40 hover:bg-primary/5 transition-all text-left group disabled:opacity-50"
+                    onClick={() =>
+                      loadExample(ex.name, ex.content, "usage_data", "text/csv")
+                    }
+                    disabled={loadingExample !== null}
+                  >
+                    <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center shrink-0 group-hover:bg-primary/10">
+                      <Table2 className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{ex.label}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {ex.description}
+                      </p>
+                    </div>
+                    {loadingExample === ex.name ? (
+                      <Loader2 className="h-3.5 w-3.5 text-primary animate-spin shrink-0" />
+                    ) : (
+                      <Upload className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {usageData.length > 0 && (
-              <div className="mt-4 space-y-2">
+              <div className="space-y-2 pt-2 border-t">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Uploaded Files ({usageData.length})
+                </p>
                 {usageData.map((file) => (
                   <FileRow
                     key={file.id}
@@ -240,7 +409,9 @@ export default function DataUploadTab({ projectId }: { projectId: number }) {
           <CardContent className="flex items-center gap-3 py-4">
             <AlertCircle className="h-5 w-5 text-muted-foreground shrink-0" />
             <p className="text-sm text-muted-foreground">
-              Upload at least one file to begin analyzing customer feedback. The AI will process your transcripts and usage data to extract insights.
+              Upload at least one file to begin analyzing customer feedback. The
+              AI will process your transcripts and usage data to extract
+              insights.
             </p>
           </CardContent>
         </Card>
@@ -257,7 +428,7 @@ function FileRow({ file, onDelete }: { file: any; onDelete: () => void }) {
   };
 
   return (
-    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 group">
+    <div className="flex items-center justify-between p-2.5 rounded-lg bg-muted/40 group">
       <div className="flex items-center gap-3 min-w-0">
         {file.fileType === "transcript" ? (
           <FileText className="h-4 w-4 text-primary shrink-0" />
