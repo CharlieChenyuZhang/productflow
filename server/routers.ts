@@ -84,6 +84,29 @@ export const appRouter = router({
         });
         return { id, url };
       }),
+    getContent: protectedProcedure
+      .input(z.object({ id: z.number(), projectId: z.number() }))
+      .query(async ({ input }) => {
+        const file = await db.getDataFileById(input.id, input.projectId);
+        if (!file) throw new Error("File not found");
+        // Fetch the file content from S3 URL
+        try {
+          const response = await fetch(file.fileUrl);
+          if (!response.ok) throw new Error("Failed to fetch file from storage");
+          const text = await response.text();
+          return {
+            id: file.id,
+            fileName: file.fileName,
+            fileType: file.fileType,
+            mimeType: file.mimeType,
+            fileSize: file.fileSize,
+            content: text,
+          };
+        } catch (err) {
+          console.error("[FileContent] Failed to fetch:", err);
+          throw new Error("Could not retrieve file content");
+        }
+      }),
     delete: protectedProcedure
       .input(z.object({ id: z.number(), projectId: z.number() }))
       .mutation(async ({ input }) => {

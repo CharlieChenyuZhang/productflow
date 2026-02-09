@@ -13,6 +13,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
+import FileViewerDialog from "@/components/FileViewerDialog";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -27,6 +28,11 @@ export default function DataUploadTab({ projectId }: { projectId: number }) {
   const utils = trpc.useUtils();
   const { data: files, isLoading } = trpc.dataFile.list.useQuery({ projectId });
   const [loadingExample, setLoadingExample] = useState<string | null>(null);
+  const [viewingFile, setViewingFile] = useState<{
+    id: number;
+    fileName: string;
+    fileType: "transcript" | "usage_data";
+  } | null>(null);
 
   const uploadMutation = trpc.dataFile.upload.useMutation({
     onSuccess: () => {
@@ -292,6 +298,13 @@ export default function DataUploadTab({ projectId }: { projectId: number }) {
                     onDelete={() =>
                       deleteMutation.mutate({ id: file.id, projectId })
                     }
+                    onView={() =>
+                      setViewingFile({
+                        id: file.id,
+                        fileName: file.fileName,
+                        fileType: file.fileType as "transcript" | "usage_data",
+                      })
+                    }
                   />
                 ))}
               </div>
@@ -396,6 +409,13 @@ export default function DataUploadTab({ projectId }: { projectId: number }) {
                     onDelete={() =>
                       deleteMutation.mutate({ id: file.id, projectId })
                     }
+                    onView={() =>
+                      setViewingFile({
+                        id: file.id,
+                        fileName: file.fileName,
+                        fileType: file.fileType as "transcript" | "usage_data",
+                      })
+                    }
                   />
                 ))}
               </div>
@@ -403,6 +423,17 @@ export default function DataUploadTab({ projectId }: { projectId: number }) {
           </CardContent>
         </Card>
       </div>
+
+      {viewingFile && (
+        <FileViewerDialog
+          open={!!viewingFile}
+          onOpenChange={(open) => !open && setViewingFile(null)}
+          fileId={viewingFile.id}
+          projectId={projectId}
+          fileName={viewingFile.fileName}
+          fileType={viewingFile.fileType}
+        />
+      )}
 
       {files && files.length === 0 && (
         <Card className="border-dashed bg-muted/20">
@@ -420,7 +451,7 @@ export default function DataUploadTab({ projectId }: { projectId: number }) {
   );
 }
 
-function FileRow({ file, onDelete }: { file: any; onDelete: () => void }) {
+function FileRow({ file, onDelete, onView }: { file: any; onDelete: () => void; onView: () => void }) {
   const formatSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -428,7 +459,10 @@ function FileRow({ file, onDelete }: { file: any; onDelete: () => void }) {
   };
 
   return (
-    <div className="flex items-center justify-between p-2.5 rounded-lg bg-muted/40 group">
+    <div
+      className="flex items-center justify-between p-2.5 rounded-lg bg-muted/40 group cursor-pointer hover:bg-muted/60 transition-colors"
+      onClick={onView}
+    >
       <div className="flex items-center gap-3 min-w-0">
         {file.fileType === "transcript" ? (
           <FileText className="h-4 w-4 text-primary shrink-0" />
@@ -451,7 +485,7 @@ function FileRow({ file, onDelete }: { file: any; onDelete: () => void }) {
           variant="ghost"
           size="icon"
           className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
-          onClick={onDelete}
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
         >
           <Trash2 className="h-3.5 w-3.5" />
         </Button>

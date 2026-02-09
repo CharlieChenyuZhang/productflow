@@ -29,3 +29,8 @@
 - [x] Update DashboardLayout to remove login/logout UI
 - [x] Update landing page to link directly to /projects without auth
 - [x] Full E2E testing of all features - ALL 8 TESTS PASSED
+- [x] Add backend endpoint to fetch file contents from S3 storage
+- [x] Build transcript viewer with speaker highlighting and formatting
+- [x] Build CSV viewer with interactive table (sorting, filtering) and summary charts
+- [x] Add click-to-preview on uploaded files in Data tab
+- [x] Add file preview dialog/panel with proper rendering

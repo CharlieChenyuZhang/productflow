@@ -13,6 +13,7 @@ vi.mock("./db", () => ({
   getProjectFiles: vi.fn(),
   createDataFile: vi.fn(),
   deleteDataFile: vi.fn(),
+  getDataFileById: vi.fn(),
   getProjectAnalyses: vi.fn(),
   getAnalysisById: vi.fn(),
   createAnalysis: vi.fn(),
@@ -496,6 +497,82 @@ describe("research.delete", () => {
 
     expect(result).toEqual({ success: true });
     expect(db.deleteCompanyResearch).toHaveBeenCalledWith(1, 1);
+  });
+});
+
+// ─── File Content Viewer ───
+describe("dataFile.getContent", () => {
+  it("returns file content from S3 URL", async () => {
+    const mockFile = {
+      id: 1,
+      projectId: 1,
+      userId: 1,
+      fileName: "interview.txt",
+      fileType: "transcript",
+      fileKey: "projects/1/files/abc-interview.txt",
+      fileUrl: "https://s3.example.com/interview.txt",
+      fileSize: 1024,
+      mimeType: "text/plain",
+      createdAt: new Date(),
+    };
+    vi.mocked(db.getDataFileById).mockResolvedValue(mockFile as any);
+
+    // Mock global fetch
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve("Q: How was your experience?\nA: It was great!"),
+    });
+
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.dataFile.getContent({ id: 1, projectId: 1 });
+
+    expect(result.id).toBe(1);
+    expect(result.fileName).toBe("interview.txt");
+    expect(result.fileType).toBe("transcript");
+    expect(result.content).toContain("How was your experience");
+    expect(db.getDataFileById).toHaveBeenCalledWith(1, 1);
+
+    globalThis.fetch = originalFetch;
+  });
+
+  it("throws when file not found", async () => {
+    vi.mocked(db.getDataFileById).mockResolvedValue(undefined);
+
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    await expect(
+      caller.dataFile.getContent({ id: 999, projectId: 1 })
+    ).rejects.toThrow("File not found");
+  });
+
+  it("throws when S3 fetch fails", async () => {
+    const mockFile = {
+      id: 1,
+      projectId: 1,
+      fileName: "data.csv",
+      fileType: "usage_data",
+      fileUrl: "https://s3.example.com/data.csv",
+      fileSize: 512,
+      mimeType: "text/csv",
+    };
+    vi.mocked(db.getDataFileById).mockResolvedValue(mockFile as any);
+
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      statusText: "Not Found",
+    });
+
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    await expect(
+      caller.dataFile.getContent({ id: 1, projectId: 1 })
+    ).rejects.toThrow("Could not retrieve file content");
+
+    globalThis.fetch = originalFetch;
   });
 });
 

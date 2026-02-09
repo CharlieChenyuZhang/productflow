@@ -107,6 +107,13 @@ export async function createDataFile(data: InsertDataFile): Promise<number> {
   return result[0].insertId;
 }
 
+export async function getDataFileById(id: number, projectId: number): Promise<DataFile | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(dataFiles).where(and(eq(dataFiles.id, id), eq(dataFiles.projectId, projectId))).limit(1);
+  return result[0];
+}
+
 export async function getProjectFiles(projectId: number): Promise<DataFile[]> {
   const db = await getDb();
   if (!db) return [];
