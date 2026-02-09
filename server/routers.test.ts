@@ -110,10 +110,15 @@ describe("project.list", () => {
     expect(db.getUserProjects).toHaveBeenCalledWith(1);
   });
 
-  it("throws UNAUTHORIZED for unauthenticated user", async () => {
+  it("uses fallback user for unauthenticated requests", async () => {
+    const mockProjects = [{ id: 1, name: "Test Project", userId: 1, description: null, status: "active", createdAt: new Date(), updatedAt: new Date() }];
+    vi.mocked(db.getUserProjects).mockResolvedValue(mockProjects as any);
+
     const ctx = createUnauthContext();
     const caller = appRouter.createCaller(ctx);
-    await expect(caller.project.list()).rejects.toThrow();
+    // With fallback user, this should resolve instead of throwing
+    const result = await caller.project.list();
+    expect(Array.isArray(result)).toBe(true);
   });
 });
 
@@ -366,10 +371,15 @@ describe("research.list", () => {
     expect(db.getProjectResearch).toHaveBeenCalledWith(1);
   });
 
-  it("throws UNAUTHORIZED for unauthenticated user", async () => {
+  it("uses fallback user for unauthenticated research requests", async () => {
+    const mockResearch = [{ id: 1, projectId: 1, companyUrl: "https://stripe.com", status: "completed" }];
+    vi.mocked(db.getProjectResearch).mockResolvedValue(mockResearch as any);
+
     const ctx = createUnauthContext();
     const caller = appRouter.createCaller(ctx);
-    await expect(caller.research.list({ projectId: 1 })).rejects.toThrow();
+    // With fallback user, this should resolve instead of throwing
+    const result = await caller.research.list({ projectId: 1 });
+    expect(Array.isArray(result)).toBe(true);
   });
 });
 

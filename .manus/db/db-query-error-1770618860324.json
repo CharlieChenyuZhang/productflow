@@ -1,0 +1,8 @@
+{
+  "query": "SELECT COUNT(*) as cnt FROM users;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 21EYzk1ZpLZQdqk.883ab5f278af --database dUNLiBSnf68zrtyCeRU39E --execute SELECT COUNT(*) as cnt FROM users;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1105 (HY000) at line 1: no available peers, region: {id:566954 region_epoch:<conf_ver:5 version:131920 > peers:<id:566955 store_id:2001 > peers:<id:566956 store_id:2020 > peers:<id:566957 store_id:2192 > }"
+  ]
+}

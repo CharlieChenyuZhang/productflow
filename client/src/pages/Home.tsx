@@ -1,6 +1,4 @@
-import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { getLoginUrl } from "@/const";
 import {
   Compass,
   ArrowRight,
@@ -12,19 +10,9 @@ import {
   Zap,
 } from "lucide-react";
 import { useLocation } from "wouter";
-import { useEffect } from "react";
 
 export default function Home() {
-  const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
-
-  useEffect(() => {
-    if (!loading && user) {
-      setLocation("/projects");
-    }
-  }, [loading, user, setLocation]);
-
-  if (loading) return null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -37,7 +25,7 @@ export default function Home() {
             </div>
             <span className="text-lg font-bold tracking-tight">ProDiscovery</span>
           </div>
-          <Button onClick={() => { window.location.href = getLoginUrl(); }}>
+          <Button onClick={() => setLocation("/projects")}>
             Get Started <ArrowRight className="ml-1.5 h-4 w-4" />
           </Button>
         </div>
@@ -62,7 +50,7 @@ export default function Home() {
               <Button
                 size="lg"
                 className="h-12 px-8 text-base shadow-lg hover:shadow-xl transition-all"
-                onClick={() => { window.location.href = getLoginUrl(); }}
+                onClick={() => setLocation("/projects")}
               >
                 Start Discovering <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
@@ -170,7 +158,7 @@ export default function Home() {
           <Button
             size="lg"
             className="h-12 px-8 text-base shadow-lg"
-            onClick={() => { window.location.href = getLoginUrl(); }}
+            onClick={() => setLocation("/projects")}
           >
             Get Started Free <ArrowRight className="ml-2 h-4 w-4" />
           </Button>

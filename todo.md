@@ -23,3 +23,9 @@
 - [x] Company Research: results dashboard with positive/negative sentiment categorization
 - [x] Company Research: sentiment charts and insight cards
 - [x] Company Research: new Research tab in project workspace
+- [x] Remove OAuth requirement - app should work without sign-in
+- [x] Update frontend pages to remove auth gates and sign-in prompts
+- [x] Update backend to use a default user instead of requiring auth context
+- [x] Update DashboardLayout to remove login/logout UI
+- [x] Update landing page to link directly to /projects without auth
+- [x] Full E2E testing of all features - ALL 8 TESTS PASSED
