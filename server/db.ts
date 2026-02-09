@@ -1,11 +1,17 @@
-import { eq } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import {
+  InsertUser, users,
+  projects, InsertProject, Project,
+  dataFiles, InsertDataFile, DataFile,
+  analyses, InsertAnalysis, Analysis,
+  featureProposals, InsertFeatureProposal, FeatureProposal,
+  tasks, InsertTask, Task,
+} from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
@@ -18,26 +24,16 @@ export async function getDb() {
   return _db;
 }
 
+// ─── Users ───
 export async function upsertUser(user: InsertUser): Promise<void> {
-  if (!user.openId) {
-    throw new Error("User openId is required for upsert");
-  }
-
+  if (!user.openId) throw new Error("User openId is required for upsert");
   const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot upsert user: database not available");
-    return;
-  }
-
+  if (!db) { console.warn("[Database] Cannot upsert user: database not available"); return; }
   try {
-    const values: InsertUser = {
-      openId: user.openId,
-    };
+    const values: InsertUser = { openId: user.openId };
     const updateSet: Record<string, unknown> = {};
-
     const textFields = ["name", "email", "loginMethod"] as const;
     type TextField = (typeof textFields)[number];
-
     const assignNullable = (field: TextField) => {
       const value = user[field];
       if (value === undefined) return;
@@ -45,48 +41,187 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       values[field] = normalized;
       updateSet[field] = normalized;
     };
-
     textFields.forEach(assignNullable);
-
-    if (user.lastSignedIn !== undefined) {
-      values.lastSignedIn = user.lastSignedIn;
-      updateSet.lastSignedIn = user.lastSignedIn;
-    }
-    if (user.role !== undefined) {
-      values.role = user.role;
-      updateSet.role = user.role;
-    } else if (user.openId === ENV.ownerOpenId) {
-      values.role = 'admin';
-      updateSet.role = 'admin';
-    }
-
-    if (!values.lastSignedIn) {
-      values.lastSignedIn = new Date();
-    }
-
-    if (Object.keys(updateSet).length === 0) {
-      updateSet.lastSignedIn = new Date();
-    }
-
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
-      set: updateSet,
-    });
-  } catch (error) {
-    console.error("[Database] Failed to upsert user:", error);
-    throw error;
-  }
+    if (user.lastSignedIn !== undefined) { values.lastSignedIn = user.lastSignedIn; updateSet.lastSignedIn = user.lastSignedIn; }
+    if (user.role !== undefined) { values.role = user.role; updateSet.role = user.role; }
+    else if (user.openId === ENV.ownerOpenId) { values.role = 'admin'; updateSet.role = 'admin'; }
+    if (!values.lastSignedIn) values.lastSignedIn = new Date();
+    if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date();
+    await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
+  } catch (error) { console.error("[Database] Failed to upsert user:", error); throw error; }
 }
 
 export async function getUserByOpenId(openId: string) {
   const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot get user: database not available");
-    return undefined;
-  }
-
+  if (!db) return undefined;
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
-
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// ─── Projects ───
+export async function createProject(data: InsertProject): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(projects).values(data);
+  return result[0].insertId;
+}
+
+export async function getUserProjects(userId: number): Promise<Project[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(projects).where(eq(projects.userId, userId)).orderBy(desc(projects.updatedAt));
+}
+
+export async function getProjectById(projectId: number, userId: number): Promise<Project | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(projects).where(and(eq(projects.id, projectId), eq(projects.userId, userId))).limit(1);
+  return result[0];
+}
+
+export async function updateProject(projectId: number, userId: number, data: Partial<Pick<Project, "name" | "description" | "status">>): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(projects).set(data).where(and(eq(projects.id, projectId), eq(projects.userId, userId)));
+}
+
+export async function deleteProject(projectId: number, userId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(tasks).where(eq(tasks.projectId, projectId));
+  await db.delete(featureProposals).where(eq(featureProposals.projectId, projectId));
+  await db.delete(analyses).where(eq(analyses.projectId, projectId));
+  await db.delete(dataFiles).where(eq(dataFiles.projectId, projectId));
+  await db.delete(projects).where(and(eq(projects.id, projectId), eq(projects.userId, userId)));
+}
+
+// ─── Data Files ───
+export async function createDataFile(data: InsertDataFile): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(dataFiles).values(data);
+  return result[0].insertId;
+}
+
+export async function getProjectFiles(projectId: number): Promise<DataFile[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(dataFiles).where(eq(dataFiles.projectId, projectId)).orderBy(desc(dataFiles.createdAt));
+}
+
+export async function deleteDataFile(fileId: number, projectId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(dataFiles).where(and(eq(dataFiles.id, fileId), eq(dataFiles.projectId, projectId)));
+}
+
+// ─── Analyses ───
+export async function createAnalysis(data: InsertAnalysis): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(analyses).values(data);
+  return result[0].insertId;
+}
+
+export async function getProjectAnalyses(projectId: number): Promise<Analysis[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(analyses).where(eq(analyses.projectId, projectId)).orderBy(desc(analyses.createdAt));
+}
+
+export async function getAnalysisById(analysisId: number, projectId: number): Promise<Analysis | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(analyses).where(and(eq(analyses.id, analysisId), eq(analyses.projectId, projectId))).limit(1);
+  return result[0];
+}
+
+export async function updateAnalysis(analysisId: number, data: Partial<Pick<Analysis, "status" | "themes" | "painPoints" | "featureRequests" | "sentimentSummary" | "rawAnalysis" | "completedAt">>): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(analyses).set(data).where(eq(analyses.id, analysisId));
+}
+
+// ─── Feature Proposals ───
+export async function createFeatureProposal(data: InsertFeatureProposal): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(featureProposals).values(data);
+  return result[0].insertId;
+}
+
+export async function getProjectProposals(projectId: number): Promise<FeatureProposal[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(featureProposals).where(eq(featureProposals.projectId, projectId)).orderBy(desc(featureProposals.createdAt));
+}
+
+export async function getProposalById(proposalId: number, projectId: number): Promise<FeatureProposal | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(featureProposals).where(and(eq(featureProposals.id, proposalId), eq(featureProposals.projectId, projectId))).limit(1);
+  return result[0];
+}
+
+export async function updateProposalStatus(proposalId: number, status: FeatureProposal["status"]): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(featureProposals).set({ status }).where(eq(featureProposals.id, proposalId));
+}
+
+// ─── Tasks ───
+export async function createTask(data: InsertTask): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(tasks).values(data);
+  return result[0].insertId;
+}
+
+export async function createManyTasks(taskList: InsertTask[]): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (taskList.length === 0) return;
+  await db.insert(tasks).values(taskList);
+}
+
+export async function getProposalTasks(featureProposalId: number): Promise<Task[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(tasks).where(eq(tasks.featureProposalId, featureProposalId)).orderBy(tasks.sortOrder);
+}
+
+export async function getProjectTasks(projectId: number): Promise<Task[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(tasks).where(eq(tasks.projectId, projectId)).orderBy(tasks.sortOrder);
+}
+
+export async function updateTaskStatus(taskId: number, status: Task["status"]): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(tasks).set({ status }).where(eq(tasks.id, taskId));
+}
+
+export async function deleteProposalTasks(featureProposalId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(tasks).where(eq(tasks.featureProposalId, featureProposalId));
+}
+
+// ─── Stats ───
+export async function getProjectStats(projectId: number) {
+  const db = await getDb();
+  if (!db) return { files: 0, analyses: 0, proposals: 0, tasks: 0 };
+  const [files, analysesList, proposalsList, tasksList] = await Promise.all([
+    db.select().from(dataFiles).where(eq(dataFiles.projectId, projectId)),
+    db.select().from(analyses).where(eq(analyses.projectId, projectId)),
+    db.select().from(featureProposals).where(eq(featureProposals.projectId, projectId)),
+    db.select().from(tasks).where(eq(tasks.projectId, projectId)),
+  ]);
+  return {
+    files: files.length,
+    analyses: analysesList.length,
+    proposals: proposalsList.length,
+    tasks: tasksList.length,
+  };
+}
