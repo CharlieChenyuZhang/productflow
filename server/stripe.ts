@@ -75,19 +75,19 @@ export async function createStripeProducts() {
   if (!proProduct) {
     const pro = await stripe.products.create({
       name: "ProductFlow Pro",
-      description: "For product managers and founders — unlimited projects, 50 analyses/mo, 20 research/mo",
+      description: "Full-power AI product discovery — unlimited projects, 50 analyses/mo, 20 live researches/mo",
       metadata: { plan_id: "pro" },
     });
     const proMonthly = await stripe.prices.create({
       product: pro.id,
-      unit_amount: 2900,
+      unit_amount: 4900,
       currency: "usd",
       recurring: { interval: "month" },
       metadata: { plan_id: "pro", interval: "monthly" },
     });
     const proYearly = await stripe.prices.create({
       product: pro.id,
-      unit_amount: 28800, // $24/mo * 12
+      unit_amount: 46800, // $39/mo * 12
       currency: "usd",
       recurring: { interval: "year" },
       metadata: { plan_id: "pro", interval: "yearly" },
@@ -103,19 +103,19 @@ export async function createStripeProducts() {
   if (!teamProduct) {
     const team = await stripe.products.create({
       name: "ProductFlow Team",
-      description: "For product teams — unlimited everything, team collaboration, export to Jira & Linear",
+      description: "Scale AI product discovery across your org — unlimited everything, team collaboration",
       metadata: { plan_id: "team" },
     });
     const teamMonthly = await stripe.prices.create({
       product: team.id,
-      unit_amount: 7900,
+      unit_amount: 12900,
       currency: "usd",
       recurring: { interval: "month" },
       metadata: { plan_id: "team", interval: "monthly" },
     });
     const teamYearly = await stripe.prices.create({
       product: team.id,
-      unit_amount: 79200, // $66/mo * 12
+      unit_amount: 118800, // $99/mo * 12
       currency: "usd",
       recurring: { interval: "year" },
       metadata: { plan_id: "team", interval: "yearly" },

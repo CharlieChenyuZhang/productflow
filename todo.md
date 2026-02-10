@@ -67,3 +67,8 @@
 - [x] Enforce usage limits based on plan tier (projects, analyses, research)
 - [x] Add billing portal link for subscription management
 - [x] Write vitest tests for subscription logic
+- [x] Increase pricing tiers (Pro ~$49, Team ~$129) to reflect AI research costs
+- [x] Update pricing copy to justify premium with cost-of-research messaging
+- [x] Update landing page pricing preview section with new prices
+- [x] Update Pricing.tsx with new prices and value justification
+- [x] Update billing test expectations for new prices

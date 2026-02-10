@@ -1,5 +1,11 @@
 // ─── ProductFlow Pricing Plans ───
 // Centralized plan definitions used by both backend and frontend
+//
+// Why the premium pricing?
+// Each AI analysis runs multiple LLM calls against your data (~$0.50–2.00 per run).
+// Each company research triggers live web crawling across 10–30 sources, search API
+// calls, and multi-step LLM synthesis (~$1.00–3.00 per research). These are real
+// infrastructure costs that scale with usage, not flat-rate commodity features.
 
 export interface PlanLimits {
   maxProjects: number;       // -1 = unlimited
@@ -27,8 +33,8 @@ export interface PricingPlan {
 export const PLANS: PricingPlan[] = [
   {
     id: "free",
-    name: "Free",
-    description: "Perfect for exploring product discovery",
+    name: "Starter",
+    description: "Try the platform — no credit card required",
     monthlyPrice: 0,
     yearlyPrice: 0,
     stripePriceIdMonthly: null,
@@ -56,9 +62,9 @@ export const PLANS: PricingPlan[] = [
   {
     id: "pro",
     name: "Pro",
-    description: "For product managers and founders",
-    monthlyPrice: 2900, // $29
-    yearlyPrice: 2400,  // $24/mo billed yearly
+    description: "Full-power discovery for PMs & founders",
+    monthlyPrice: 4900, // $49
+    yearlyPrice: 3900,  // $39/mo billed yearly
     stripePriceIdMonthly: "price_pro_monthly",
     stripePriceIdYearly: "price_pro_yearly",
     limits: {
@@ -73,11 +79,11 @@ export const PLANS: PricingPlan[] = [
     features: [
       "Unlimited projects",
       "50 AI analyses per month",
-      "20 company researches per month",
+      "20 live company researches per month",
       "Unlimited files per project",
-      "Priority processing",
+      "Priority AI processing",
       "Advanced insights & charts",
-      "Feature proposals with detail",
+      "Detailed feature proposals",
       "Export task breakdowns",
     ],
     highlighted: true,
@@ -85,9 +91,9 @@ export const PLANS: PricingPlan[] = [
   {
     id: "team",
     name: "Team",
-    description: "For product teams shipping fast",
-    monthlyPrice: 7900, // $79
-    yearlyPrice: 6600,  // $66/mo billed yearly
+    description: "Scale product discovery across your org",
+    monthlyPrice: 12900, // $129
+    yearlyPrice: 9900,   // $99/mo billed yearly
     stripePriceIdMonthly: "price_team_monthly",
     stripePriceIdYearly: "price_team_yearly",
     limits: {
@@ -101,11 +107,11 @@ export const PLANS: PricingPlan[] = [
     },
     features: [
       "Everything in Pro",
-      "Unlimited analyses",
-      "Unlimited company research",
-      "Team collaboration",
+      "Unlimited AI analyses",
+      "Unlimited live company research",
+      "Team collaboration & sharing",
       "Export to Jira & Linear",
-      "Priority support",
+      "Priority support & onboarding",
       "Custom integrations",
       "API access",
     ],

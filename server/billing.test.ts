@@ -132,8 +132,8 @@ describe("billing.plans", () => {
     const result = await caller.billing.plans();
 
     expect(result[0].monthlyPrice).toBe(0);
-    expect(result[1].monthlyPrice).toBe(2900);
-    expect(result[2].monthlyPrice).toBe(7900);
+    expect(result[1].monthlyPrice).toBe(4900);
+    expect(result[2].monthlyPrice).toBe(12900);
   });
 
   it("includes limits for each plan", async () => {
@@ -174,7 +174,7 @@ describe("billing.currentPlan", () => {
     const result = await caller.billing.currentPlan();
 
     expect(result.planId).toBe("free");
-    expect(result.planName).toBe("Free");
+    expect(result.planName).toBe("Starter");
     expect(result.stripeCustomerId).toBeNull();
     expect(result.stripeSubscriptionId).toBeNull();
   });

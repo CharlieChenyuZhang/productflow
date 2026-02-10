@@ -166,38 +166,38 @@ export default function Home() {
         <div className="container">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold tracking-tight mb-4">
-              Simple, transparent pricing
+              Real AI research, honestly priced
             </h2>
             <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-              Start free, upgrade when you need more power.
+              Every analysis runs live AI models. Every research crawls real websites. Our pricing reflects the genuine cost of delivering insights — not serving static dashboards.
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
             {[
               {
-                name: "Free",
+                name: "Starter",
                 price: "$0",
                 period: "forever",
-                desc: "Perfect for exploring",
-                features: ["2 projects", "3 analyses/mo", "1 research/mo"],
+                desc: "Try the full platform",
+                features: ["2 projects", "3 AI analyses/mo", "1 live research/mo"],
                 highlighted: false,
                 cta: "Get Started Free",
               },
               {
                 name: "Pro",
-                price: "$29",
+                price: "$49",
                 period: "/mo",
-                desc: "For PMs & founders",
-                features: ["Unlimited projects", "50 analyses/mo", "20 research/mo", "Priority processing"],
+                desc: "Full-power discovery",
+                features: ["Unlimited projects", "50 AI analyses/mo", "20 live researches/mo", "Priority AI processing"],
                 highlighted: true,
                 cta: "Upgrade to Pro",
               },
               {
                 name: "Team",
-                price: "$79",
+                price: "$129",
                 period: "/mo",
-                desc: "For product teams",
-                features: ["Everything in Pro", "Unlimited analyses", "Team collaboration", "Export to Jira"],
+                desc: "Scale across your org",
+                features: ["Everything in Pro", "Unlimited analyses & research", "Team collaboration", "Export to Jira & Linear"],
                 highlighted: false,
                 cta: "Upgrade to Team",
               },

@@ -111,7 +111,7 @@ export default function Billing() {
             Billing & Usage
           </h1>
           <p className="text-muted-foreground mt-1">
-            Manage your subscription and monitor usage
+            Manage your subscription and monitor usage. Each analysis and research uses live AI and web crawling infrastructure.
           </p>
         </div>
 
@@ -125,14 +125,14 @@ export default function Billing() {
                   {isPaid && <Crown className="h-4 w-4 text-amber-500" />}
                 </CardTitle>
                 <CardDescription>
-                  {planLoading ? "Loading..." : `You're on the ${currentPlan?.planName || "Free"} plan`}
+                  {planLoading ? "Loading..." : `You're on the ${currentPlan?.planName || "Starter"} plan`}
                 </CardDescription>
               </div>
               <Badge
                 variant={isPaid ? "default" : "secondary"}
                 className={`text-sm px-3 py-1 ${isPaid ? "bg-primary" : ""}`}
               >
-                {currentPlan?.planName || "Free"}
+                {currentPlan?.planName || "Starter"}
               </Badge>
             </div>
           </CardHeader>
