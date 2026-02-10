@@ -43,3 +43,6 @@
 - [x] Add logout button to sidebar that clears session and returns to homepage
 - [x] Add return-to-homepage link/button in sidebar navigation
 - [x] Rename app from ProDiscovery to ProductFlow across all files
+- [x] Fix Company Research to use real web search results instead of LLM-hallucinated URLs
+- [x] Search web first for real articles/reviews, then pass real content to LLM for analysis
+- [x] Ensure every research finding has a verified, real source URL

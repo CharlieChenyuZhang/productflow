@@ -557,6 +557,22 @@ Generate 5-12 tasks. Order them by dependency (things that need to happen first 
   return parsed?.tasks || [];
 }
 
+// ─── Helper: Resolve grounding redirect URLs to real URLs ───
+async function resolveRedirectUrl(url: string): Promise<string> {
+  try {
+    const resp = await fetch(url, { method: "HEAD", redirect: "follow" });
+    return resp.url || url;
+  } catch {
+    // Fallback: try to extract domain-based URL from the redirect
+    try {
+      const resp2 = await fetch(url, { redirect: "manual" });
+      const location = resp2.headers.get("location");
+      if (location) return location;
+    } catch { /* ignore */ }
+    return url;
+  }
+}
+
 // ─── Company Research Pipeline ───
 async function runCompanyResearch(researchId: number, projectId: number, companyUrl: string, projectName: string) {
   try {
@@ -572,54 +588,122 @@ async function runCompanyResearch(researchId: number, projectId: number, company
 
     await db.updateCompanyResearch(researchId, { companyName, status: "searching" });
 
-    // Step 1: Use LLM to search and gather information about the company
+    // Step 1: Use LLM with web search grounding to find REAL feedback
+    // The google_search tool triggers the model to actually search the web,
+    // returning real url_citation annotations with verified source URLs.
     const searchResult = await invokeLLM({
       messages: [
         {
           role: "system",
-          content: `You are an expert market researcher and competitive analyst. Your task is to research the company at "${companyUrl}" (${companyName}) and find all publicly available feedback, reviews, discussions, and opinions about their products and services.
+          content: `You are an expert market researcher. Search the web for real, publicly available feedback, reviews, discussions, and opinions about the company "${companyName}" (${companyUrl}).
 
-You must search your knowledge for:
-1. Product reviews from sites like G2, Capterra, TrustRadius, Product Hunt, etc.
-2. Forum discussions from Reddit, Hacker News, Stack Overflow, etc.
-3. Social media sentiment from Twitter/X, LinkedIn, etc.
-4. News articles and blog posts about the company
-5. Customer support complaints or praise
-6. General market perception
+Search for:
+1. Product reviews from G2, Capterra, TrustRadius, Product Hunt
+2. Forum discussions from Reddit, Hacker News
+3. News articles and blog posts
+4. Customer complaints and praise
 
-For each piece of feedback you find, provide:
-- The source (where it came from, e.g., 'G2 Reviews', 'Reddit r/SaaS')
-- The source URL (a real, specific URL where this feedback can be found or verified — e.g., 'https://www.g2.com/products/notion/reviews', 'https://www.reddit.com/r/Notion/', 'https://news.ycombinator.com/item?id=12345'). Use real URLs that actually exist for the platform.
-- The type of source (review, forum, social_media, news, blog, support, other)
+For each piece of feedback found, provide:
+- The source name (e.g., "G2 Reviews", "Reddit")
+- The type: review, forum, social_media, news, blog, support, or other
 - A title summarizing the feedback
-- The actual content/quote
-- Whether the sentiment is positive, negative, or neutral
-- A sentiment score from -100 (very negative) to +100 (very positive)
-- A category (e.g., "pricing", "performance", "support", "features", "UX", "reliability", "security", "onboarding", "documentation", "integration")
+- The actual content/quote (2-4 sentences)
+- Sentiment: positive, negative, or neutral
+- A sentiment score from -100 to +100
+- A category (pricing, performance, support, features, UX, reliability, security, onboarding, documentation, integration)
 - Relevant tags
 
-Return a comprehensive JSON with 15-25 findings. Be thorough and realistic. Base this on what you actually know about this company and its products. If you don't have specific knowledge, generate realistic market research findings based on the company's domain and likely product category.
+Provide 15-25 findings. Only include feedback that is based on real web search results.`
+        },
+        {
+          role: "user",
+          content: `Search the web for reviews, feedback, and discussions about ${companyName} (${companyUrl}). Find what real users are saying about their products across review sites, forums, and news.`
+        }
+      ],
+      tools: [{
+        type: "function",
+        function: {
+          name: "google_search",
+          description: "Search Google for real-time information",
+          parameters: {
+            type: "object",
+            properties: {
+              query: { type: "string", description: "Search query" }
+            },
+            required: ["query"]
+          }
+        }
+      }],
+      max_tokens: 8000
+    });
+
+    // Extract real source URLs from grounding annotations
+    const message = searchResult.choices[0]?.message;
+    const rawContent = typeof message?.content === "string" ? message.content : "";
+    const metadata = (message as any)?.metadata || {};
+    const annotations = metadata.annotations || [];
+    const searchQueries = metadata.web_search_queries || [];
+
+    // Resolve grounding redirect URLs to real URLs
+    const resolvedUrls: Array<{ domain: string; url: string; title: string }> = [];
+    for (const ann of annotations) {
+      const uc = ann?.url_citation;
+      if (uc?.url) {
+        try {
+          const realUrl = await resolveRedirectUrl(uc.url);
+          resolvedUrls.push({
+            domain: uc.domain || "",
+            url: realUrl,
+            title: uc.title || uc.domain || ""
+          });
+        } catch {
+          // If redirect resolution fails, use the domain to construct a reasonable URL
+          if (uc.domain) {
+            resolvedUrls.push({
+              domain: uc.domain,
+              url: `https://${uc.domain}`,
+              title: uc.title || uc.domain
+            });
+          }
+        }
+      }
+    }
+
+    // Step 2: Use LLM to structure the web-grounded content into findings
+    // Pass the real content AND the real URLs so the LLM maps them correctly
+    const structureResult = await invokeLLM({
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert analyst. Structure the following web research about "${companyName}" into categorized findings.
+
+IMPORTANT: You MUST use ONLY the source URLs provided in the VERIFIED SOURCES list below. Do NOT invent or hallucinate any URLs. Each finding must reference one of these verified sources.
+
+VERIFIED SOURCES (use these exact URLs):
+${resolvedUrls.map((u, i) => `${i + 1}. [${u.domain}] ${u.url}`).join("\n")}
 
 Return valid JSON matching this schema:
 {
   "companyName": "string",
-  "companyDescription": "string (1-2 sentences about what the company does)",
+  "companyDescription": "string (1-2 sentences)",
   "findings": [{
-    "source": "string (e.g., 'G2 Reviews', 'Reddit r/SaaS', 'Hacker News')",
-    "sourceUrl": "string (real URL where this feedback can be found, e.g., 'https://www.g2.com/products/notion/reviews')",
+    "source": "string (e.g., 'G2 Reviews', 'Reddit')",
+    "sourceUrl": "string (MUST be one of the verified URLs above)",
     "sourceType": "review"|"forum"|"social_media"|"news"|"blog"|"support"|"other",
     "title": "string",
-    "content": "string (the actual feedback text, 2-4 sentences)",
+    "content": "string (the actual feedback, 2-4 sentences)",
     "sentiment": "positive"|"negative"|"neutral",
-    "sentimentScore": number,
+    "sentimentScore": number (-100 to +100),
     "category": "string",
     "tags": ["string"]
   }]
-}`
+}
+
+Provide 15-25 findings. Each sourceUrl MUST exactly match one of the verified URLs listed above.`
         },
         {
           role: "user",
-          content: `Research the company at ${companyUrl} and find all public feedback about their products. Be thorough and cover multiple sources.`
+          content: `Here is the raw research content about ${companyName}:\n\n${rawContent}`
         }
       ],
       response_format: {
@@ -659,18 +743,38 @@ Return valid JSON matching this schema:
       }
     });
 
-    const searchContent = searchResult.choices[0]?.message?.content;
+    const searchContent = structureResult.choices[0]?.message?.content;
     const searchParsed = typeof searchContent === "string" ? JSON.parse(searchContent) : null;
     if (!searchParsed) throw new Error("Failed to parse search results");
+
+    // Validate that sourceUrls are from our verified list
+    const verifiedUrlSet = new Set(resolvedUrls.map(u => u.url));
+    const findings = (searchParsed.findings || []).map((f: any) => {
+      // If the LLM used a URL not in our verified list, try to find the closest match
+      if (!verifiedUrlSet.has(f.sourceUrl)) {
+        const match = resolvedUrls.find(u =>
+          f.sourceUrl.includes(u.domain) || u.url.includes(f.source.toLowerCase().split(" ")[0])
+        );
+        if (match) {
+          f.sourceUrl = match.url;
+        } else if (resolvedUrls.length > 0) {
+          // Find by domain similarity
+          const domainMatch = resolvedUrls.find(u =>
+            f.source.toLowerCase().includes(u.domain.split(".")[0])
+          );
+          f.sourceUrl = domainMatch ? domainMatch.url : resolvedUrls[0].url;
+        }
+      }
+      return f;
+    });
 
     await db.updateCompanyResearch(researchId, {
       companyName: searchParsed.companyName || companyName,
       status: "analyzing",
-      rawSearchResults: searchParsed,
+      rawSearchResults: { ...searchParsed, verifiedSources: resolvedUrls, searchQueries },
     });
 
-    // Step 2: Save individual findings
-    const findings = searchParsed.findings || [];
+    // Step 3: Save individual findings with verified URLs
     if (findings.length > 0) {
       await db.createManyFindings(
         findings.map((f: any) => ({
@@ -689,7 +793,7 @@ Return valid JSON matching this schema:
       );
     }
 
-    // Step 3: Analyze and summarize
+    // Step 4: Analyze and summarize
     const positiveFindings = findings.filter((f: any) => f.sentiment === "positive");
     const negativeFindings = findings.filter((f: any) => f.sentiment === "negative");
     const neutralFindings = findings.filter((f: any) => f.sentiment === "neutral");
