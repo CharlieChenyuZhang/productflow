@@ -46,3 +46,10 @@
 - [x] Fix Company Research to use real web search results instead of LLM-hallucinated URLs
 - [x] Search web first for real articles/reviews, then pass real content to LLM for analysis
 - [x] Ensure every research finding has a verified, real source URL
+- [x] Restore OAuth login flow - require authentication to access app
+- [x] Restore auth gate in DashboardLayout (show sign-in screen for unauthenticated users)
+- [x] Restore protectedProcedure enforcement (remove fallback user bypass)
+- [x] Keep landing page public, require login for /projects and workspace
+- [x] Add login count tracking to users table
+- [x] Add user stats endpoint (total users, recent logins)
+- [x] Add admin users page showing all registered users with login counts

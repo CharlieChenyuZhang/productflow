@@ -36,6 +36,12 @@ export function registerOAuthRoutes(app: Express) {
         lastSignedIn: new Date(),
       });
 
+      // Increment login count for tracking
+      const existingUser = await db.getUserByOpenId(userInfo.openId);
+      if (existingUser) {
+        await db.incrementLoginCount(existingUser.id);
+      }
+
       const sessionToken = await sdk.createSessionToken(userInfo.openId, {
         name: userInfo.name || "",
         expiresInMs: ONE_YEAR_MS,

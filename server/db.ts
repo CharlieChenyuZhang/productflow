@@ -1,4 +1,4 @@
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, count, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser, users,
@@ -58,6 +58,41 @@ export async function getUserByOpenId(openId: string) {
   if (!db) return undefined;
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
   return result.length > 0 ? result[0] : undefined;
+}
+
+export async function incrementLoginCount(userId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ loginCount: sql`${users.loginCount} + 1`, lastSignedIn: new Date() }).where(eq(users.id, userId));
+}
+
+export async function getAllUsers() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({
+    id: users.id,
+    name: users.name,
+    email: users.email,
+    role: users.role,
+    loginCount: users.loginCount,
+    createdAt: users.createdAt,
+    lastSignedIn: users.lastSignedIn,
+    loginMethod: users.loginMethod,
+  }).from(users).orderBy(desc(users.lastSignedIn));
+}
+
+export async function getUserStats() {
+  const db = await getDb();
+  if (!db) return { totalUsers: 0, totalLogins: 0, recentUsers: 0 };
+  const [totalResult] = await db.select({ total: count() }).from(users);
+  const [loginResult] = await db.select({ total: sql<number>`SUM(${users.loginCount})` }).from(users);
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const [recentResult] = await db.select({ total: count() }).from(users).where(sql`${users.lastSignedIn} >= ${sevenDaysAgo}`);
+  return {
+    totalUsers: totalResult?.total ?? 0,
+    totalLogins: Number(loginResult?.total ?? 0),
+    recentUsers: recentResult?.total ?? 0,
+  };
 }
 
 // ─── Projects ───

@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   Sidebar,
   SidebarContent,
@@ -14,12 +15,16 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/useMobile";
+import { getLoginUrl } from "@/const";
 import {
   FolderKanban,
   PanelLeft,
   Compass,
   Home,
   LogOut,
+  LogIn,
+  Loader2,
+  Users,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -29,9 +34,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { DashboardLayoutSkeleton } from "@/components/DashboardLayoutSkeleton";
 
 const menuItems = [
   { icon: FolderKanban, label: "Projects", path: "/projects" },
+  { icon: Users, label: "Users", path: "/admin/users", adminOnly: true },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -44,6 +51,50 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const { user, loading, isAuthenticated } = useAuth();
+
+  // Show skeleton while checking auth
+  if (loading) {
+    return <DashboardLayoutSkeleton />;
+  }
+
+  // Show sign-in screen if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center max-w-md mx-auto px-6">
+          <div className="h-14 w-14 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-6">
+            <Compass className="h-7 w-7 text-primary-foreground" />
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight mb-2">
+            Welcome to ProductFlow
+          </h1>
+          <p className="text-muted-foreground mb-8">
+            Sign in to start discovering what to build next with AI-powered product insights.
+          </p>
+          <Button
+            size="lg"
+            className="h-12 px-8 text-base shadow-lg"
+            onClick={() => {
+              window.location.href = getLoginUrl();
+            }}
+          >
+            <LogIn className="mr-2 h-4 w-4" />
+            Sign in to continue
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <SidebarProviderWrapper>
+      <DashboardLayoutContent>{children}</DashboardLayoutContent>
+    </SidebarProviderWrapper>
+  );
+}
+
+function SidebarProviderWrapper({ children }: { children: React.ReactNode }) {
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
@@ -57,30 +108,30 @@ export default function DashboardLayout({
     <SidebarProvider
       style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}
     >
-      <DashboardLayoutContent setSidebarWidth={setSidebarWidth}>
-        {children}
-      </DashboardLayoutContent>
+      {children}
     </SidebarProvider>
   );
 }
 
-type DashboardLayoutContentProps = {
-  children: React.ReactNode;
-  setSidebarWidth: (width: number) => void;
-};
-
 function DashboardLayoutContent({
   children,
-  setSidebarWidth,
-}: DashboardLayoutContentProps) {
+}: {
+  children: React.ReactNode;
+}) {
   const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const activeMenuItem = menuItems.find((item) => location.startsWith(item.path));
   const isMobile = useIsMobile();
+
+  const visibleMenuItems = menuItems.filter(
+    (item) => !item.adminOnly || user?.role === "admin"
+  );
+  const activeMenuItem = visibleMenuItems.find((item) =>
+    location.startsWith(item.path)
+  );
 
   useEffect(() => {
     if (isCollapsed) setIsResizing(false);
@@ -89,9 +140,13 @@ function DashboardLayoutContent({
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing) return;
-      const sidebarLeft = sidebarRef.current?.getBoundingClientRect().left ?? 0;
+      const sidebarLeft =
+        sidebarRef.current?.getBoundingClientRect().left ?? 0;
       const newWidth = e.clientX - sidebarLeft;
-      if (newWidth >= MIN_WIDTH && newWidth <= MAX_WIDTH) setSidebarWidth(newWidth);
+      if (newWidth >= MIN_WIDTH && newWidth <= MAX_WIDTH) {
+        const rootStyle = document.documentElement.style;
+        rootStyle.setProperty("--sidebar-width", `${newWidth}px`);
+      }
     };
     const handleMouseUp = () => setIsResizing(false);
     if (isResizing) {
@@ -106,9 +161,9 @@ function DashboardLayoutContent({
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
     };
-  }, [isResizing, setSidebarWidth]);
+  }, [isResizing]);
 
-  const displayName = user?.name || "Local User";
+  const displayName = user?.name || "User";
   const displayEmail = user?.email || "";
 
   const handleLogout = async () => {
@@ -119,7 +174,11 @@ function DashboardLayoutContent({
   return (
     <>
       <div className="relative" ref={sidebarRef}>
-        <Sidebar collapsible="icon" className="border-r-0" disableTransition={isResizing}>
+        <Sidebar
+          collapsible="icon"
+          className="border-r-0"
+          disableTransition={isResizing}
+        >
           <SidebarHeader className="h-16 justify-center">
             <div className="flex items-center gap-3 px-2 transition-all w-full">
               <button
@@ -144,7 +203,7 @@ function DashboardLayoutContent({
 
           <SidebarContent className="gap-0">
             <SidebarMenu className="px-2 py-1">
-              {menuItems.map((item) => {
+              {visibleMenuItems.map((item) => {
                 const isActive = location.startsWith(item.path);
                 return (
                   <SidebarMenuItem key={item.path}>
@@ -154,7 +213,9 @@ function DashboardLayoutContent({
                       tooltip={item.label}
                       className="h-10 transition-all font-normal"
                     >
-                      <item.icon className={`h-4 w-4 ${isActive ? "text-primary" : ""}`} />
+                      <item.icon
+                        className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
+                      />
                       <span>{item.label}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -235,7 +296,9 @@ function DashboardLayoutContent({
         </Sidebar>
         <div
           className={`absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/20 transition-colors ${isCollapsed ? "hidden" : ""}`}
-          onMouseDown={() => { if (!isCollapsed) setIsResizing(true); }}
+          onMouseDown={() => {
+            if (!isCollapsed) setIsResizing(true);
+          }}
           style={{ zIndex: 50 }}
         />
       </div>

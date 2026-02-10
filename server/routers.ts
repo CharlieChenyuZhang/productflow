@@ -1,7 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { publicProcedure, protectedProcedure, adminProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { nanoid } from "nanoid";
 import { invokeLLM } from "./_core/llm";
@@ -284,6 +284,11 @@ export const appRouter = router({
         await db.deleteCompanyResearch(input.id, input.projectId);
         return { success: true };
       }),
+  }),
+
+  admin: router({
+    users: adminProcedure.query(() => db.getAllUsers()),
+    stats: adminProcedure.query(() => db.getUserStats()),
   }),
 });
 
