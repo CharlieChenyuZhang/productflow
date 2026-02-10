@@ -135,7 +135,7 @@ function DashboardLayoutContent({
                     <Compass className="h-3.5 w-3.5 text-primary-foreground" />
                   </div>
                   <span className="font-semibold tracking-tight truncate text-sm">
-                    ProDiscovery
+                    ProductFlow
                   </span>
                 </div>
               ) : null}
@@ -246,7 +246,7 @@ function DashboardLayoutContent({
             <div className="flex items-center gap-2">
               <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />
               <span className="tracking-tight text-foreground">
-                {activeMenuItem?.label ?? "ProDiscovery"}
+                {activeMenuItem?.label ?? "ProductFlow"}
               </span>
             </div>
           </div>

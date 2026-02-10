@@ -23,7 +23,7 @@ export default function Home() {
             <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center">
               <Compass className="h-4.5 w-4.5 text-primary-foreground" />
             </div>
-            <span className="text-lg font-bold tracking-tight">ProDiscovery</span>
+            <span className="text-lg font-bold tracking-tight">ProductFlow</span>
           </div>
           <Button onClick={() => setLocation("/projects")}>
             Get Started <ArrowRight className="ml-1.5 h-4 w-4" />
@@ -172,7 +172,7 @@ export default function Home() {
             <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
               <Compass className="h-3.5 w-3.5 text-primary-foreground" />
             </div>
-            <span className="text-sm font-semibold">ProDiscovery</span>
+            <span className="text-sm font-semibold">ProductFlow</span>
           </div>
           <p className="text-xs text-muted-foreground">
             AI-Native Product Discovery Platform

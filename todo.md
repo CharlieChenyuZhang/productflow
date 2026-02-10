@@ -42,3 +42,4 @@
 - [x] Replace expanded example CSV cards with compact "Load Example Data" button
 - [x] Add logout button to sidebar that clears session and returns to homepage
 - [x] Add return-to-homepage link/button in sidebar navigation
+- [x] Rename app from ProDiscovery to ProductFlow across all files
