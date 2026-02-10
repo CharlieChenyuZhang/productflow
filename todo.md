@@ -53,3 +53,8 @@
 - [x] Add login count tracking to users table
 - [x] Add user stats endpoint (total users, recent logins)
 - [x] Add admin users page showing all registered users with login counts
+- [x] Remove admin Users page (AdminUsers.tsx)
+- [x] Remove admin router endpoints from server routers
+- [x] Remove admin sidebar link from DashboardLayout
+- [x] Remove admin route from App.tsx
+- [x] Update tests to remove admin test cases

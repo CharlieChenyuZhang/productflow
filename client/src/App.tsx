@@ -3,20 +3,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
-import DashboardLayout from "./components/DashboardLayout";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Projects from "./pages/Projects";
 import ProjectWorkspace from "./pages/ProjectWorkspace";
-import AdminUsers from "./pages/AdminUsers";
-
-function AdminUsersPage() {
-  return (
-    <DashboardLayout>
-      <AdminUsers />
-    </DashboardLayout>
-  );
-}
 
 function Router() {
   return (
@@ -24,7 +14,6 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/projects" component={Projects} />
       <Route path="/projects/:id" component={ProjectWorkspace} />
-      <Route path="/admin/users" component={AdminUsersPage} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

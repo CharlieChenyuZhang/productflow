@@ -24,7 +24,6 @@ import {
   LogOut,
   LogIn,
   Loader2,
-  Users,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -38,7 +37,6 @@ import { DashboardLayoutSkeleton } from "@/components/DashboardLayoutSkeleton";
 
 const menuItems = [
   { icon: FolderKanban, label: "Projects", path: "/projects" },
-  { icon: Users, label: "Users", path: "/admin/users", adminOnly: true },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -126,10 +124,7 @@ function DashboardLayoutContent({
   const sidebarRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
 
-  const visibleMenuItems = menuItems.filter(
-    (item) => !item.adminOnly || user?.role === "admin"
-  );
-  const activeMenuItem = visibleMenuItems.find((item) =>
+  const activeMenuItem = menuItems.find((item) =>
     location.startsWith(item.path)
   );
 
@@ -203,7 +198,7 @@ function DashboardLayoutContent({
 
           <SidebarContent className="gap-0">
             <SidebarMenu className="px-2 py-1">
-              {visibleMenuItems.map((item) => {
+              {menuItems.map((item) => {
                 const isActive = location.startsWith(item.path);
                 return (
                   <SidebarMenuItem key={item.path}>
