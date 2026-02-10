@@ -18,9 +18,17 @@ import {
   FolderKanban,
   PanelLeft,
   Compass,
+  Home,
+  LogOut,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
+import { Separator } from "@/components/ui/separator";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const menuItems = [
   { icon: FolderKanban, label: "Projects", path: "/projects" },
@@ -65,7 +73,7 @@ function DashboardLayoutContent({
   children,
   setSidebarWidth,
 }: DashboardLayoutContentProps) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -102,6 +110,11 @@ function DashboardLayoutContent({
 
   const displayName = user?.name || "Local User";
   const displayEmail = user?.email || "";
+
+  const handleLogout = async () => {
+    await logout();
+    setLocation("/");
+  };
 
   return (
     <>
@@ -150,7 +163,8 @@ function DashboardLayoutContent({
             </SidebarMenu>
           </SidebarContent>
 
-          <SidebarFooter className="p-3">
+          <SidebarFooter className="p-3 space-y-2">
+            {/* User info */}
             <div className="flex items-center gap-3 rounded-lg px-1 py-1 w-full text-left group-data-[collapsible=icon]:justify-center">
               <Avatar className="h-9 w-9 border shrink-0">
                 <AvatarFallback className="text-xs font-medium bg-primary/10 text-primary">
@@ -167,6 +181,55 @@ function DashboardLayoutContent({
                   </p>
                 )}
               </div>
+            </div>
+
+            <Separator className="group-data-[collapsible=icon]:hidden" />
+
+            {/* Home & Logout buttons */}
+            <div className="flex flex-col gap-1 group-data-[collapsible=icon]:items-center">
+              {isCollapsed ? (
+                <>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => setLocation("/")}
+                        className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                      >
+                        <Home className="h-4 w-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Homepage</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={handleLogout}
+                        className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                      >
+                        <LogOut className="h-4 w-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Logout</TooltipContent>
+                  </Tooltip>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setLocation("/")}
+                    className="flex items-center gap-3 rounded-lg px-2 py-2 w-full text-left text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  >
+                    <Home className="h-4 w-4 shrink-0" />
+                    <span>Homepage</span>
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-3 rounded-lg px-2 py-2 w-full text-left text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                  >
+                    <LogOut className="h-4 w-4 shrink-0" />
+                    <span>Logout</span>
+                  </button>
+                </>
+              )}
             </div>
           </SidebarFooter>
         </Sidebar>

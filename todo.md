@@ -40,3 +40,5 @@
 - [x] Display source links in Research tab findings UI
 - [x] Replace expanded example transcript cards with compact "Load Example Data" button
 - [x] Replace expanded example CSV cards with compact "Load Example Data" button
+- [x] Add logout button to sidebar that clears session and returns to homepage
+- [x] Add return-to-homepage link/button in sidebar navigation
