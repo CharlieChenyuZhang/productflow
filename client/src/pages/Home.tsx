@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Compass,
   ArrowRight,
@@ -8,6 +9,7 @@ import {
   ListChecks,
   Sparkles,
   Zap,
+  Check,
 } from "lucide-react";
 import { useLocation } from "wouter";
 
@@ -25,9 +27,14 @@ export default function Home() {
             </div>
             <span className="text-lg font-bold tracking-tight">ProductFlow</span>
           </div>
-          <Button onClick={() => setLocation("/projects")}>
-            Get Started <ArrowRight className="ml-1.5 h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" onClick={() => setLocation("/pricing")}>
+              Pricing
+            </Button>
+            <Button onClick={() => setLocation("/projects")}>
+              Get Started <ArrowRight className="ml-1.5 h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -53,6 +60,14 @@ export default function Home() {
                 onClick={() => setLocation("/projects")}
               >
                 Start Discovering <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="h-12 px-8 text-base"
+                onClick={() => setLocation("/pricing")}
+              >
+                View Pricing
               </Button>
             </div>
           </div>
@@ -146,6 +161,87 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Pricing Preview */}
+      <section className="py-20 bg-muted/40">
+        <div className="container">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold tracking-tight mb-4">
+              Simple, transparent pricing
+            </h2>
+            <p className="text-muted-foreground text-lg max-w-xl mx-auto">
+              Start free, upgrade when you need more power.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+            {[
+              {
+                name: "Free",
+                price: "$0",
+                period: "forever",
+                desc: "Perfect for exploring",
+                features: ["2 projects", "3 analyses/mo", "1 research/mo"],
+                highlighted: false,
+                cta: "Get Started Free",
+              },
+              {
+                name: "Pro",
+                price: "$29",
+                period: "/mo",
+                desc: "For PMs & founders",
+                features: ["Unlimited projects", "50 analyses/mo", "20 research/mo", "Priority processing"],
+                highlighted: true,
+                cta: "Upgrade to Pro",
+              },
+              {
+                name: "Team",
+                price: "$79",
+                period: "/mo",
+                desc: "For product teams",
+                features: ["Everything in Pro", "Unlimited analyses", "Team collaboration", "Export to Jira"],
+                highlighted: false,
+                cta: "Upgrade to Team",
+              },
+            ].map((plan) => (
+              <div
+                key={plan.name}
+                className={`relative bg-card rounded-xl border p-6 flex flex-col ${
+                  plan.highlighted ? "border-primary shadow-lg shadow-primary/10 scale-[1.02]" : ""
+                }`}
+              >
+                {plan.highlighted && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <Badge className="bg-primary text-primary-foreground px-3 py-0.5 text-xs">
+                      Most Popular
+                    </Badge>
+                  </div>
+                )}
+                <h3 className="font-semibold text-lg mb-1">{plan.name}</h3>
+                <p className="text-xs text-muted-foreground mb-3">{plan.desc}</p>
+                <div className="mb-4">
+                  <span className="text-3xl font-bold">{plan.price}</span>
+                  <span className="text-muted-foreground text-sm ml-1">{plan.period}</span>
+                </div>
+                <ul className="space-y-2 mb-6 flex-1">
+                  {plan.features.map((f) => (
+                    <li key={f} className="flex items-center gap-2 text-sm">
+                      <Check className="h-3.5 w-3.5 text-primary shrink-0" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <Button
+                  variant={plan.highlighted ? "default" : "outline"}
+                  className="w-full"
+                  onClick={() => setLocation("/pricing")}
+                >
+                  {plan.cta}
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="py-20 bg-primary/5">
         <div className="container text-center">
@@ -174,9 +270,17 @@ export default function Home() {
             </div>
             <span className="text-sm font-semibold">ProductFlow</span>
           </div>
-          <p className="text-xs text-muted-foreground">
-            AI-Native Product Discovery Platform
-          </p>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setLocation("/pricing")}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Pricing
+            </button>
+            <p className="text-xs text-muted-foreground">
+              AI-Native Product Discovery Platform
+            </p>
+          </div>
         </div>
       </footer>
     </div>

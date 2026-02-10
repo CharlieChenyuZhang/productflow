@@ -24,6 +24,7 @@ import {
   LogOut,
   LogIn,
   Loader2,
+  CreditCard,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -37,6 +38,7 @@ import { DashboardLayoutSkeleton } from "@/components/DashboardLayoutSkeleton";
 
 const menuItems = [
   { icon: FolderKanban, label: "Projects", path: "/projects" },
+  { icon: CreditCard, label: "Billing", path: "/billing" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";

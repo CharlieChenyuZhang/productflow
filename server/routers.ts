@@ -8,6 +8,8 @@ import { invokeLLM } from "./_core/llm";
 import { notifyOwner } from "./_core/notification";
 import { storagePut } from "./storage";
 import * as db from "./db";
+import { createCheckoutSession, createBillingPortalSession, createStripeProducts } from "./stripe";
+import { PLANS, getPlanById } from "./products";
 
 export const appRouter = router({
   system: systemRouter,
@@ -35,6 +37,14 @@ export const appRouter = router({
     create: protectedProcedure
       .input(z.object({ name: z.string().min(1).max(255), description: z.string().optional() }))
       .mutation(async ({ ctx, input }) => {
+        // Enforce project limit
+        const plan = getPlanById(ctx.user.planId || "free");
+        if (plan && plan.limits.maxProjects !== -1) {
+          const existingProjects = await db.getUserProjects(ctx.user.id);
+          if (existingProjects.length >= plan.limits.maxProjects) {
+            throw new Error(`Project limit reached (${plan.limits.maxProjects} on ${plan.name} plan). Upgrade to create more projects.`);
+          }
+        }
         const id = await db.createProject({ userId: ctx.user.id, name: input.name, description: input.description ?? null });
         return { id };
       }),
@@ -129,6 +139,22 @@ export const appRouter = router({
         if (!project) throw new Error("Project not found");
         const files = await db.getProjectFiles(input.projectId);
         if (files.length === 0) throw new Error("No data files uploaded. Please upload customer feedback data first.");
+
+        // Enforce analysis limit
+        const plan = getPlanById(ctx.user.planId || "free");
+        if (plan && plan.limits.maxAnalysesPerMonth !== -1) {
+          const allProjects = await db.getUserProjects(ctx.user.id);
+          const now = new Date();
+          const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+          let analysesThisMonth = 0;
+          for (const p of allProjects) {
+            const projectAnalyses = await db.getProjectAnalyses(p.id);
+            analysesThisMonth += projectAnalyses.filter(a => new Date(a.createdAt) >= startOfMonth).length;
+          }
+          if (analysesThisMonth >= plan.limits.maxAnalysesPerMonth) {
+            throw new Error(`Analysis limit reached (${plan.limits.maxAnalysesPerMonth}/month on ${plan.name} plan). Upgrade for more analyses.`);
+          }
+        }
 
         const analysisId = await db.createAnalysis({
           projectId: input.projectId,
@@ -257,6 +283,22 @@ export const appRouter = router({
         const project = await db.getProjectById(input.projectId, ctx.user.id);
         if (!project) throw new Error("Project not found");
 
+        // Enforce research limit
+        const plan = getPlanById(ctx.user.planId || "free");
+        if (plan && plan.limits.maxResearchPerMonth !== -1) {
+          const allProjects = await db.getUserProjects(ctx.user.id);
+          const now = new Date();
+          const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+          let researchThisMonth = 0;
+          for (const p of allProjects) {
+            const projectResearch = await db.getProjectResearch(p.id);
+            researchThisMonth += projectResearch.filter(r => new Date(r.createdAt) >= startOfMonth).length;
+          }
+          if (researchThisMonth >= plan.limits.maxResearchPerMonth) {
+            throw new Error(`Research limit reached (${plan.limits.maxResearchPerMonth}/month on ${plan.name} plan). Upgrade for more research.`);
+          }
+        }
+
         // Normalize URL
         let url = input.companyUrl.trim();
         if (!url.startsWith("http://") && !url.startsWith("https://")) {
@@ -283,6 +325,90 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         await db.deleteCompanyResearch(input.id, input.projectId);
         return { success: true };
+      }),
+  }),
+
+  billing: router({
+    plans: publicProcedure.query(() => {
+      return PLANS.map(p => ({
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        monthlyPrice: p.monthlyPrice,
+        yearlyPrice: p.yearlyPrice,
+        features: p.features,
+        limits: p.limits,
+        highlighted: p.highlighted,
+      }));
+    }),
+    currentPlan: protectedProcedure.query(({ ctx }) => {
+      const plan = getPlanById(ctx.user.planId || "free");
+      return {
+        planId: ctx.user.planId || "free",
+        planName: plan?.name || "Free",
+        stripeCustomerId: ctx.user.stripeCustomerId,
+        stripeSubscriptionId: ctx.user.stripeSubscriptionId,
+        planPeriodEnd: ctx.user.planPeriodEnd,
+        limits: plan?.limits || PLANS[0].limits,
+      };
+    }),
+    checkout: protectedProcedure
+      .input(z.object({
+        planId: z.enum(["pro", "team"]),
+        interval: z.enum(["monthly", "yearly"]),
+        origin: z.string(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Ensure Stripe products exist and get price IDs
+        const prices = await createStripeProducts();
+        let priceId: string | undefined;
+        if (input.planId === "pro") {
+          priceId = input.interval === "monthly" ? prices.proMonthly : prices.proYearly;
+        } else {
+          priceId = input.interval === "monthly" ? prices.teamMonthly : prices.teamYearly;
+        }
+        if (!priceId) throw new Error("Price not found");
+
+        const session = await createCheckoutSession({
+          userId: ctx.user.id,
+          userEmail: ctx.user.email,
+          userName: ctx.user.name,
+          priceId,
+          origin: input.origin,
+          planId: input.planId,
+        });
+        return { url: session.url };
+      }),
+    usage: protectedProcedure.query(async ({ ctx }) => {
+      const projectsList = await db.getUserProjects(ctx.user.id);
+      // Count analyses and research this month
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      let analysesThisMonth = 0;
+      let researchThisMonth = 0;
+      for (const p of projectsList) {
+        const projectAnalyses = await db.getProjectAnalyses(p.id);
+        analysesThisMonth += projectAnalyses.filter(a => new Date(a.createdAt) >= startOfMonth).length;
+        const projectResearch = await db.getProjectResearch(p.id);
+        researchThisMonth += projectResearch.filter(r => new Date(r.createdAt) >= startOfMonth).length;
+      }
+      return {
+        projects: projectsList.length,
+        analysesThisMonth,
+        researchThisMonth,
+      };
+    }),
+    portal: protectedProcedure
+      .input(z.object({ origin: z.string() }))
+      .mutation(async ({ ctx }) => {
+        if (!ctx.user.stripeCustomerId) {
+          throw new Error("No billing account found");
+        }
+        const session = await createBillingPortalSession({
+          stripeCustomerId: ctx.user.stripeCustomerId,
+          origin: ctx.req.headers.origin || "http://localhost:3000",
+        });
+        return { url: session.url };
       }),
   }),
 

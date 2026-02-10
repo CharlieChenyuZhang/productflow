@@ -1,0 +1,22 @@
+{
+  "query": "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'users' AND COLUMN_NAME IN ('stripeCustomerId', 'stripeSubscriptionId', 'planId', 'planPeriodEnd');",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 21EYzk1ZpLZQdqk.883ab5f278af --database dUNLiBSnf68zrtyCeRU39E --execute SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'users' AND COLUMN_NAME IN ('stripeCustomerId', 'stripeSubscriptionId', 'planId', 'planPeriodEnd');",
+  "rows": [
+    {
+      "COLUMN_NAME": "stripeCustomerId"
+    },
+    {
+      "COLUMN_NAME": "stripeSubscriptionId"
+    },
+    {
+      "COLUMN_NAME": "planId"
+    },
+    {
+      "COLUMN_NAME": "planPeriodEnd"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\nstripeCustomerId\nstripeSubscriptionId\nplanId\nplanPeriodEnd\n",
+  "stderr": "",
+  "execution_time_ms": 59
+}

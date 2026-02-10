@@ -58,3 +58,12 @@
 - [x] Remove admin sidebar link from DashboardLayout
 - [x] Remove admin route from App.tsx
 - [x] Update tests to remove admin test cases
+- [x] Add Stripe integration to project via webdev_add_feature
+- [x] Design freemium pricing model (Free / Pro / Team tiers)
+- [x] Add subscription/plan tracking to database schema
+- [x] Build Stripe checkout and subscription management endpoints
+- [x] Build pricing section on landing page with tier comparison
+- [x] Build plan upgrade/manage UI in the dashboard
+- [x] Enforce usage limits based on plan tier (projects, analyses, research)
+- [x] Add billing portal link for subscription management
+- [x] Write vitest tests for subscription logic

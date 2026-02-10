@@ -11,6 +11,10 @@ export const users = mysqlTable("users", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
   loginCount: int("loginCount").default(0).notNull(),
+  stripeCustomerId: varchar("stripeCustomerId", { length: 255 }),
+  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }),
+  planId: varchar("planId", { length: 32 }).default("free").notNull(),
+  planPeriodEnd: timestamp("planPeriodEnd"),
 });
 
 export type User = typeof users.$inferSelect;
