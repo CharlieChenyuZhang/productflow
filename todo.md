@@ -73,3 +73,9 @@
 - [x] Update Pricing.tsx with new prices and value justification
 - [x] Update billing test expectations for new prices
 - [x] Add contact section to landing page with email chenyu@glowingstar.ai
+- [x] Hide email address in contact section - show "Contact Us" hyperlink instead
+- [x] Add "Developed by GlowingStar Inc." to footer
+- [x] Remove intermediate login page - redirect directly to OAuth or app
+- [x] After login, redirect to /projects (main app) instead of landing page
+- [x] Display user plan/account type in sidebar UI
+- [x] Ensure payment status is tracked in DB and visible in UI

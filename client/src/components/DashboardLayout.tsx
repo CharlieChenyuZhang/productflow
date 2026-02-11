@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/useMobile";
 import { getLoginUrl } from "@/const";
+import { trpc } from "@/lib/trpc";
+import { Badge } from "@/components/ui/badge";
 import {
   FolderKanban,
   PanelLeft,
@@ -25,6 +27,7 @@ import {
   LogIn,
   Loader2,
   CreditCard,
+  Crown,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -53,38 +56,16 @@ export default function DashboardLayout({
 }) {
   const { user, loading, isAuthenticated } = useAuth();
 
-  // Show skeleton while checking auth
-  if (loading) {
-    return <DashboardLayoutSkeleton />;
-  }
+  // Auto-redirect to OAuth login if not authenticated
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      window.location.href = getLoginUrl();
+    }
+  }, [loading, isAuthenticated]);
 
-  // Show sign-in screen if not authenticated
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center max-w-md mx-auto px-6">
-          <div className="h-14 w-14 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-6">
-            <Compass className="h-7 w-7 text-primary-foreground" />
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight mb-2">
-            Welcome to ProductFlow
-          </h1>
-          <p className="text-muted-foreground mb-8">
-            Sign in to start discovering what to build next with AI-powered product insights.
-          </p>
-          <Button
-            size="lg"
-            className="h-12 px-8 text-base shadow-lg"
-            onClick={() => {
-              window.location.href = getLoginUrl();
-            }}
-          >
-            <LogIn className="mr-2 h-4 w-4" />
-            Sign in to continue
-          </Button>
-        </div>
-      </div>
-    );
+  // Show skeleton while checking auth or redirecting
+  if (loading || !isAuthenticated) {
+    return <DashboardLayoutSkeleton />;
   }
 
   return (
@@ -163,6 +144,13 @@ function DashboardLayoutContent({
   const displayName = user?.name || "User";
   const displayEmail = user?.email || "";
 
+  // Fetch current plan
+  const { data: currentPlan } = trpc.billing.currentPlan.useQuery(undefined, {
+    refetchOnWindowFocus: false,
+  });
+  const planName = currentPlan?.planName || "Starter";
+  const isPaid = currentPlan?.planId === "pro" || currentPlan?.planId === "team";
+
   const handleLogout = async () => {
     await logout();
     setLocation("/");
@@ -230,9 +218,21 @@ function DashboardLayoutContent({
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
-                <p className="text-sm font-medium truncate leading-none">
-                  {displayName}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium truncate leading-none">
+                    {displayName}
+                  </p>
+                  <Badge
+                    variant={isPaid ? "default" : "secondary"}
+                    className={`text-[10px] px-1.5 py-0 h-4 shrink-0 cursor-pointer ${
+                      isPaid ? "bg-primary/90" : ""
+                    }`}
+                    onClick={() => setLocation("/billing")}
+                  >
+                    {isPaid && <Crown className="h-2.5 w-2.5 mr-0.5" />}
+                    {planName}
+                  </Badge>
+                </div>
                 {displayEmail && (
                   <p className="text-xs text-muted-foreground truncate mt-1.5">
                     {displayEmail}

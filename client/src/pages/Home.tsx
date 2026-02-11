@@ -13,9 +13,19 @@ import {
   Mail,
 } from "lucide-react";
 import { useLocation } from "wouter";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { useEffect } from "react";
 
 export default function Home() {
   const [, setLocation] = useLocation();
+  const { isAuthenticated, loading } = useAuth();
+
+  // Redirect authenticated users straight to the app
+  useEffect(() => {
+    if (!loading && isAuthenticated) {
+      setLocation("/projects");
+    }
+  }, [loading, isAuthenticated, setLocation]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -280,7 +290,7 @@ export default function Home() {
               className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
             >
               <Mail className="h-4 w-4" />
-              chenyu@glowingstar.ai
+              Contact Us
             </a>
           </div>
         </div>
@@ -295,7 +305,7 @@ export default function Home() {
             </div>
             <span className="text-sm font-semibold">ProductFlow</span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap justify-center sm:justify-end">
             <button
               onClick={() => setLocation("/pricing")}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -307,11 +317,11 @@ export default function Home() {
               href="mailto:chenyu@glowingstar.ai"
               className="text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
-              chenyu@glowingstar.ai
+              Contact Us
             </a>
             <span className="text-xs text-muted-foreground">·</span>
             <p className="text-xs text-muted-foreground">
-              AI-Native Product Discovery Platform
+              Developed by GlowingStar Inc.
             </p>
           </div>
         </div>
