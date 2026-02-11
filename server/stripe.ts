@@ -96,8 +96,8 @@ export async function createStripeProducts() {
     results.proYearly = proYearly.id;
   } else {
     const prices = await stripe.prices.list({ product: proProduct.id, active: true });
-    results.proMonthly = prices.data.find(p => p.recurring?.interval === "month")?.id;
-    results.proYearly = prices.data.find(p => p.recurring?.interval === "year")?.id;
+    results.proMonthly = prices.data.find((p: { recurring?: { interval?: string } | null }) => p.recurring?.interval === "month")?.id;
+    results.proYearly = prices.data.find((p: { recurring?: { interval?: string } | null }) => p.recurring?.interval === "year")?.id;
   }
 
   if (!teamProduct) {
@@ -124,8 +124,8 @@ export async function createStripeProducts() {
     results.teamYearly = teamYearly.id;
   } else {
     const prices = await stripe.prices.list({ product: teamProduct.id, active: true });
-    results.teamMonthly = prices.data.find(p => p.recurring?.interval === "month")?.id;
-    results.teamYearly = prices.data.find(p => p.recurring?.interval === "year")?.id;
+    results.teamMonthly = prices.data.find((p: { recurring?: { interval?: string } | null }) => p.recurring?.interval === "month")?.id;
+    results.teamYearly = prices.data.find((p: { recurring?: { interval?: string } | null }) => p.recurring?.interval === "year")?.id;
   }
 
   return results;

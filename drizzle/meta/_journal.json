@@ -33,15 +33,8 @@
     {
       "idx": 4,
       "version": "5",
-      "when": 1770691848318,
-      "tag": "0004_amazing_sumo",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "5",
-      "when": 1770697587668,
-      "tag": "0005_great_slyde",
+      "when": 1770787840260,
+      "tag": "0004_rich_the_santerians",
       "breakpoints": true
     }
   ]

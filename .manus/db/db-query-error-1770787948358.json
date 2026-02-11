@@ -1,0 +1,8 @@
+{
+  "query": "ALTER TABLE `users` ADD `loginCount` int DEFAULT 0 NOT NULL;\nALTER TABLE `users` ADD `stripeCustomerId` varchar(255);\nALTER TABLE `users` ADD `stripeSubscriptionId` varchar(255);\nALTER TABLE `users` ADD `planId` varchar(32) DEFAULT 'free' NOT NULL;\nALTER TABLE `users` ADD `planPeriodEnd` timestamp;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway03.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 21EYzk1ZpLZQdqk.883ab5f278af --database dUNLiBSnf68zrtyCeRU39E --execute ALTER TABLE `users` ADD `loginCount` int DEFAULT 0 NOT NULL;\nALTER TABLE `users` ADD `stripeCustomerId` varchar(255);\nALTER TABLE `users` ADD `stripeSubscriptionId` varchar(255);\nALTER TABLE `users` ADD `planId` varchar(32) DEFAULT 'free' NOT NULL;\nALTER TABLE `users` ADD `planPeriodEnd` timestamp;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1060 (42S21) at line 1: Duplicate column name 'loginCount'"
+  ]
+}

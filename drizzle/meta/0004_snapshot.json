@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "5cefc87a-6a65-4d51-9b58-8652374ff80e",
+  "id": "06d4f5e4-3ef3-4a61-af3e-fe47c981a0fd",
   "prevId": "59e0a166-bed8-4881-82ee-0c362c18a81b",
   "tables": {
     "analyses": {
@@ -831,6 +831,35 @@
           "notNull": true,
           "autoincrement": false,
           "default": 0
+        },
+        "stripeCustomerId": {
+          "name": "stripeCustomerId",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "stripeSubscriptionId": {
+          "name": "stripeSubscriptionId",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "planId": {
+          "name": "planId",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'free'"
+        },
+        "planPeriodEnd": {
+          "name": "planPeriodEnd",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         }
       },
       "indexes": {},

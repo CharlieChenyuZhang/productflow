@@ -10,6 +10,7 @@ import {
   Sparkles,
   Zap,
   Check,
+  Mail,
 } from "lucide-react";
 import { useLocation } from "wouter";
 
@@ -261,9 +262,33 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Contact */}
+      <section className="py-16 bg-muted/40">
+        <div className="container">
+          <div className="max-w-xl mx-auto text-center">
+            <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-5">
+              <Mail className="h-6 w-6 text-primary" />
+            </div>
+            <h2 className="text-2xl font-bold tracking-tight mb-3">
+              Get in touch
+            </h2>
+            <p className="text-muted-foreground mb-6 leading-relaxed">
+              Have questions, feedback, or want to discuss a partnership? We'd love to hear from you.
+            </p>
+            <a
+              href="mailto:chenyu@glowingstar.ai"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
+            >
+              <Mail className="h-4 w-4" />
+              chenyu@glowingstar.ai
+            </a>
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="border-t py-8">
-        <div className="container flex items-center justify-between">
+        <div className="container flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
               <Compass className="h-3.5 w-3.5 text-primary-foreground" />
@@ -277,6 +302,14 @@ export default function Home() {
             >
               Pricing
             </button>
+            <span className="text-xs text-muted-foreground">·</span>
+            <a
+              href="mailto:chenyu@glowingstar.ai"
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              chenyu@glowingstar.ai
+            </a>
+            <span className="text-xs text-muted-foreground">·</span>
             <p className="text-xs text-muted-foreground">
               AI-Native Product Discovery Platform
             </p>

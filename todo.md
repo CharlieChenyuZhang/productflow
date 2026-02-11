@@ -72,3 +72,4 @@
 - [x] Update landing page pricing preview section with new prices
 - [x] Update Pricing.tsx with new prices and value justification
 - [x] Update billing test expectations for new prices
+- [x] Add contact section to landing page with email chenyu@glowingstar.ai
