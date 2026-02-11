@@ -56,10 +56,10 @@ export default function DashboardLayout({
 }) {
   const { user, loading, isAuthenticated } = useAuth();
 
-  // Auto-redirect to OAuth login if not authenticated
+  // Redirect to landing page if not authenticated
   useEffect(() => {
     if (!loading && !isAuthenticated) {
-      window.location.href = getLoginUrl();
+      window.location.href = "/";
     }
   }, [loading, isAuthenticated]);
 
@@ -153,7 +153,8 @@ function DashboardLayoutContent({
 
   const handleLogout = async () => {
     await logout();
-    setLocation("/");
+    // Use hard navigation to escape DashboardLayout's auth redirect
+    window.location.href = "/";
   };
 
   return (

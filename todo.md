@@ -79,3 +79,6 @@
 - [x] After login, redirect to /projects (main app) instead of landing page
 - [x] Display user plan/account type in sidebar UI
 - [x] Ensure payment status is tracked in DB and visible in UI
+- [x] Fix login flow - user reports login still doesn't work
+- [x] Ensure logout redirects to landing page
+- [x] Test full login/logout cycle end-to-end

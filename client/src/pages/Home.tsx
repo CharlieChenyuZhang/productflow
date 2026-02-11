@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { getLoginUrl } from "@/const";
 import { useEffect } from "react";
 
 export default function Home() {
@@ -42,9 +43,15 @@ export default function Home() {
             <Button variant="ghost" onClick={() => setLocation("/pricing")}>
               Pricing
             </Button>
-            <Button onClick={() => setLocation("/projects")}>
-              Get Started <ArrowRight className="ml-1.5 h-4 w-4" />
-            </Button>
+            {isAuthenticated ? (
+              <Button onClick={() => setLocation("/projects")}>
+                Go to App <ArrowRight className="ml-1.5 h-4 w-4" />
+              </Button>
+            ) : (
+              <Button onClick={() => { window.location.href = getLoginUrl(); }}>
+                Sign In <ArrowRight className="ml-1.5 h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
       </header>
@@ -68,7 +75,7 @@ export default function Home() {
               <Button
                 size="lg"
                 className="h-12 px-8 text-base shadow-lg hover:shadow-xl transition-all"
-                onClick={() => setLocation("/projects")}
+                onClick={() => { isAuthenticated ? setLocation("/projects") : window.location.href = getLoginUrl(); }}
               >
                 Start Discovering <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
@@ -265,7 +272,7 @@ export default function Home() {
           <Button
             size="lg"
             className="h-12 px-8 text-base shadow-lg"
-            onClick={() => setLocation("/projects")}
+            onClick={() => { isAuthenticated ? setLocation("/projects") : window.location.href = getLoginUrl(); }}
           >
             Get Started Free <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
