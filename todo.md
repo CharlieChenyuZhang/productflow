@@ -82,3 +82,8 @@
 - [x] Fix login flow - user reports login still doesn't work
 - [x] Ensure logout redirects to landing page
 - [x] Test full login/logout cycle end-to-end
+- [x] Include company research findings as data source for AI analysis pipeline
+- [x] Allow analysis to run with research data alone (no uploaded files required)
+- [x] Update analysis LLM prompt to incorporate research findings alongside file data
+- [x] Update frontend Insights tab to show research data is included in analysis
+- [x] Update tests for research-inclusive analysis

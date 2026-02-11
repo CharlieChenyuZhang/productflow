@@ -35,7 +35,7 @@ vi.mock("./db", () => ({
   deleteCompanyResearch: vi.fn(),
   createManyFindings: vi.fn(),
   getResearchFindings: vi.fn(),
-
+  getProjectAllFindings: vi.fn(),
 }));
 
 vi.mock("./storage", () => ({
@@ -252,11 +252,12 @@ describe("analysis.list", () => {
 });
 
 describe("analysis.run", () => {
-  it("creates an analysis and returns id", async () => {
+  it("creates an analysis with files and returns id", async () => {
     vi.mocked(db.getProjectById).mockResolvedValue({ id: 1, userId: 1, name: "Test" } as any);
     vi.mocked(db.getProjectFiles).mockResolvedValue([
       { id: 1, fileName: "test.txt", fileType: "transcript", fileUrl: "https://example.com/test.txt" },
     ] as any);
+    vi.mocked(db.getProjectResearch).mockResolvedValue([]);
     vi.mocked(db.createAnalysis).mockResolvedValue(5);
 
     const ctx = createAuthContext();
@@ -273,14 +274,48 @@ describe("analysis.run", () => {
     );
   });
 
-  it("throws when no files uploaded", async () => {
+  it("creates an analysis with research data only (no files)", async () => {
     vi.mocked(db.getProjectById).mockResolvedValue({ id: 1, userId: 1, name: "Test" } as any);
     vi.mocked(db.getProjectFiles).mockResolvedValue([]);
+    vi.mocked(db.getProjectResearch).mockResolvedValue([
+      { id: 10, projectId: 1, status: "completed", companyName: "Acme Corp" } as any,
+    ]);
+    vi.mocked(db.getProjectAllFindings).mockResolvedValue([
+      { id: 1, researchId: 10, title: "Great product", content: "Users love it", sentiment: "positive" } as any,
+    ]);
+    vi.mocked(db.createAnalysis).mockResolvedValue(7);
+
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.analysis.run({ projectId: 1 });
+
+    expect(result).toEqual({ id: 7 });
+    expect(db.createAnalysis).toHaveBeenCalled();
+  });
+
+  it("throws when no files and no research data", async () => {
+    vi.mocked(db.getProjectById).mockResolvedValue({ id: 1, userId: 1, name: "Test" } as any);
+    vi.mocked(db.getProjectFiles).mockResolvedValue([]);
+    vi.mocked(db.getProjectResearch).mockResolvedValue([]);
 
     const ctx = createAuthContext();
     const caller = appRouter.createCaller(ctx);
     await expect(caller.analysis.run({ projectId: 1 })).rejects.toThrow(
-      "No data files uploaded"
+      "No data available"
+    );
+  });
+
+  it("ignores non-completed research", async () => {
+    vi.mocked(db.getProjectById).mockResolvedValue({ id: 1, userId: 1, name: "Test" } as any);
+    vi.mocked(db.getProjectFiles).mockResolvedValue([]);
+    vi.mocked(db.getProjectResearch).mockResolvedValue([
+      { id: 10, projectId: 1, status: "pending", companyName: "Acme Corp" } as any,
+    ]);
+
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.analysis.run({ projectId: 1 })).rejects.toThrow(
+      "No data available"
     );
   });
 });

@@ -50,6 +50,7 @@ export default function InsightsTab({ projectId }: { projectId: number }) {
   const utils = trpc.useUtils();
   const { data: analyses, isLoading } = trpc.analysis.list.useQuery({ projectId });
   const { data: files } = trpc.dataFile.list.useQuery({ projectId });
+  const { data: researchList } = trpc.research.list.useQuery({ projectId });
 
   const runMutation = trpc.analysis.run.useMutation({
     onSuccess: () => {
@@ -62,6 +63,8 @@ export default function InsightsTab({ projectId }: { projectId: number }) {
 
   const latestAnalysis = analyses?.[0];
   const hasFiles = (files?.length ?? 0) > 0;
+  const hasResearch = (researchList?.filter(r => r.status === "completed")?.length ?? 0) > 0;
+  const hasData = hasFiles || hasResearch;
   const isProcessing = latestAnalysis?.status === "processing" || latestAnalysis?.status === "pending";
 
   // Auto-refresh while processing
@@ -80,18 +83,24 @@ export default function InsightsTab({ projectId }: { projectId: number }) {
           <div>
             <h3 className="font-medium">AI Feedback Analysis</h3>
             <p className="text-sm text-muted-foreground">
-              {!hasFiles
-                ? "Upload data files first to run analysis"
+              {!hasData
+                ? "Upload data files or run company research first to enable analysis"
                 : isProcessing
                 ? "Analysis is running... This typically takes 30-60 seconds."
                 : latestAnalysis?.status === "completed"
                 ? `Last analyzed ${new Date(latestAnalysis.completedAt!).toLocaleString()}`
-                : "Run AI analysis on your uploaded customer data"}
+                : `Run AI analysis on your ${hasFiles && hasResearch ? "uploaded data & research findings" : hasFiles ? "uploaded customer data" : "company research findings"}`}
             </p>
+            {hasData && !isProcessing && (
+              <div className="flex gap-2 mt-1">
+                {hasFiles && <Badge variant="secondary" className="text-xs">{files?.length} file{(files?.length ?? 0) !== 1 ? "s" : ""}</Badge>}
+                {hasResearch && <Badge variant="secondary" className="text-xs">{researchList?.filter(r => r.status === "completed").length} research</Badge>}
+              </div>
+            )}
           </div>
           <Button
             onClick={() => runMutation.mutate({ projectId })}
-            disabled={!hasFiles || runMutation.isPending || isProcessing}
+            disabled={!hasData || runMutation.isPending || isProcessing}
           >
             {isProcessing ? (
               <>

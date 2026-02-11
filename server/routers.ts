@@ -138,7 +138,10 @@ export const appRouter = router({
         const project = await db.getProjectById(input.projectId, ctx.user.id);
         if (!project) throw new Error("Project not found");
         const files = await db.getProjectFiles(input.projectId);
-        if (files.length === 0) throw new Error("No data files uploaded. Please upload customer feedback data first.");
+        const researchList = await db.getProjectResearch(input.projectId);
+        const completedResearch = researchList.filter(r => r.status === "completed");
+        const researchFindings = completedResearch.length > 0 ? await db.getProjectAllFindings(input.projectId) : [];
+        if (files.length === 0 && researchFindings.length === 0) throw new Error("No data available. Please upload customer feedback files or run company research first.");
 
         // Enforce analysis limit
         const plan = getPlanById(ctx.user.planId || "free");
@@ -163,7 +166,7 @@ export const appRouter = router({
         });
 
         // Run analysis asynchronously
-        runAnalysis(analysisId, input.projectId, files, project.name).catch(err => {
+        runAnalysis(analysisId, input.projectId, files, project.name, completedResearch, researchFindings).catch(err => {
           console.error("[Analysis] Failed:", err);
           db.updateAnalysis(analysisId, { status: "failed" });
         });
@@ -417,7 +420,7 @@ export const appRouter = router({
 export type AppRouter = typeof appRouter;
 
 // ─── AI Analysis Logic ───
-async function runAnalysis(analysisId: number, projectId: number, files: any[], projectName: string) {
+async function runAnalysis(analysisId: number, projectId: number, files: any[], projectName: string, completedResearch: any[] = [], researchFindings: any[] = []) {
   try {
     // Fetch file contents
     const fileContents: string[] = [];
@@ -431,13 +434,37 @@ async function runAnalysis(analysisId: number, projectId: number, files: any[], 
       }
     }
 
-    const combinedContent = fileContents.join("\n\n");
+    // Build research content from completed company research
+    const researchContent: string[] = [];
+    if (completedResearch.length > 0) {
+      for (const research of completedResearch) {
+        const findings = researchFindings.filter((f: any) => f.researchId === research.id);
+        let researchBlock = `--- Company Research: ${research.companyName || research.companyUrl} ---`;
+        if (research.summary) researchBlock += `\nSummary: ${research.summary}`;
+        if (research.keyStrengths) researchBlock += `\nKey Strengths: ${JSON.stringify(research.keyStrengths)}`;
+        if (research.keyWeaknesses) researchBlock += `\nKey Weaknesses: ${JSON.stringify(research.keyWeaknesses)}`;
+        if (research.recommendations) researchBlock += `\nRecommendations: ${JSON.stringify(research.recommendations)}`;
+        if (findings.length > 0) {
+          researchBlock += `\nFindings (${findings.length} total):`;
+          for (const f of findings.slice(0, 30)) {
+            researchBlock += `\n  - [${f.sentiment}] ${f.title}: ${f.content?.slice(0, 500)}`;
+            if (f.sourceUrl) researchBlock += ` (Source: ${f.sourceUrl})`;
+          }
+        }
+        researchContent.push(researchBlock);
+      }
+    }
+
+    const allParts: string[] = [];
+    if (fileContents.length > 0) allParts.push("=== UPLOADED DATA FILES ===\n" + fileContents.join("\n\n"));
+    if (researchContent.length > 0) allParts.push("=== COMPANY RESEARCH DATA ===\n" + researchContent.join("\n\n"));
+    const combinedContent = allParts.join("\n\n");
 
     const result = await invokeLLM({
       messages: [
         {
           role: "system",
-          content: `You are an expert product analyst. Analyze the following customer feedback data and product usage data for the product "${projectName}". Extract key insights and return a structured JSON response.
+          content: `You are an expert product analyst. Analyze the following data for the product "${projectName}". The data may include uploaded customer feedback files (transcripts, CSVs), company research findings from web analysis, or both. Synthesize ALL available data sources to extract comprehensive insights and return a structured JSON response.
 
 You MUST return valid JSON matching this exact schema:
 {
@@ -450,11 +477,13 @@ You MUST return valid JSON matching this exact schema:
 - "frequency" and "requestCount" should be numbers from 1-100 representing relative frequency
 - Include 3-8 items per category
 - Be specific and actionable in descriptions
-- Base everything on the actual data provided`
+- Base everything on the actual data provided
+- When research data is present, incorporate market sentiment, competitor insights, and public perception into your analysis
+- When both uploaded files and research data are present, cross-reference findings for richer insights`
         },
         {
           role: "user",
-          content: `Here is the customer feedback and usage data to analyze:\n\n${combinedContent}`
+          content: `Here is all available data to analyze:\n\n${combinedContent}`
         }
       ],
       response_format: {

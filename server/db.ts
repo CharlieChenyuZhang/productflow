@@ -301,6 +301,12 @@ export async function getResearchFindings(researchId: number): Promise<ResearchF
   return db.select().from(researchFindings).where(eq(researchFindings.researchId, researchId)).orderBy(desc(researchFindings.createdAt));
 }
 
+export async function getProjectAllFindings(projectId: number): Promise<ResearchFinding[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(researchFindings).where(eq(researchFindings.projectId, projectId)).orderBy(desc(researchFindings.createdAt));
+}
+
 // ─── Stats ───
 export async function getProjectStats(projectId: number) {
   const db = await getDb();
