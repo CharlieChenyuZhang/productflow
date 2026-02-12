@@ -8,41 +8,24 @@ function isIpAddress(host: string) {
   return host.includes(":");
 }
 
-function isSecureRequest(req: Request) {
-  if (req.protocol === "https") return true;
-
-  const forwardedProto = req.headers["x-forwarded-proto"];
-  if (!forwardedProto) return false;
-
-  const protoList = Array.isArray(forwardedProto)
-    ? forwardedProto
-    : forwardedProto.split(",");
-
-  return protoList.some(proto => proto.trim().toLowerCase() === "https");
+function isLocalRequest(req: Request) {
+  const hostname = req.hostname || "";
+  if (!hostname) return true; // Treat missing hostname as local (test environment)
+  return LOCAL_HOSTS.has(hostname) || isIpAddress(hostname);
 }
 
 export function getSessionCookieOptions(
   req: Request
 ): Pick<CookieOptions, "domain" | "httpOnly" | "path" | "sameSite" | "secure"> {
-  // const hostname = req.hostname;
-  // const shouldSetDomain =
-  //   hostname &&
-  //   !LOCAL_HOSTS.has(hostname) &&
-  //   !isIpAddress(hostname) &&
-  //   hostname !== "127.0.0.1" &&
-  //   hostname !== "::1";
-
-  // const domain =
-  //   shouldSetDomain && !hostname.startsWith(".")
-  //     ? `.${hostname}`
-  //     : shouldSetDomain
-  //       ? hostname
-  //       : undefined;
+  const isLocal = isLocalRequest(req);
 
   return {
     httpOnly: true,
     path: "/",
-    sameSite: "none",
-    secure: isSecureRequest(req),
+    // Use "lax" for same-site auth cookies (standard for OAuth flows).
+    // "none" requires Secure and is only needed for cross-site cookies.
+    sameSite: "lax",
+    // Always true in production (behind HTTPS proxy), false only for local dev
+    secure: !isLocal,
   };
 }

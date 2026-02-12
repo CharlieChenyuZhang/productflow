@@ -15,15 +15,21 @@ export function registerOAuthRoutes(app: Express) {
     const state = getQueryParam(req, "state");
 
     if (!code || !state) {
+      console.error("[OAuth] Callback missing code or state params");
       res.status(400).json({ error: "code and state are required" });
       return;
     }
 
     try {
+      console.log("[OAuth] Exchanging code for token...");
       const tokenResponse = await sdk.exchangeCodeForToken(code, state);
+      console.log("[OAuth] Token exchange successful");
+
       const userInfo = await sdk.getUserInfo(tokenResponse.accessToken);
+      console.log("[OAuth] Got user info:", userInfo.openId, userInfo.name);
 
       if (!userInfo.openId) {
+        console.error("[OAuth] openId missing from user info");
         res.status(400).json({ error: "openId missing from user info" });
         return;
       }
@@ -48,12 +54,15 @@ export function registerOAuthRoutes(app: Express) {
       });
 
       const cookieOptions = getSessionCookieOptions(req);
+      console.log("[OAuth] Setting cookie with options:", JSON.stringify(cookieOptions));
       res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
 
+      console.log("[OAuth] Login successful, redirecting to /projects");
       res.redirect(302, "/projects");
     } catch (error) {
-      console.error("[OAuth] Callback failed", error);
-      res.status(500).json({ error: "OAuth callback failed" });
+      console.error("[OAuth] Callback failed:", error);
+      // Redirect to landing page with error param instead of showing raw JSON
+      res.redirect(302, "/?login_error=1");
     }
   });
 }

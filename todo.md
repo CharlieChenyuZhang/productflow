@@ -87,3 +87,4 @@
 - [x] Update analysis LLM prompt to incorporate research findings alongside file data
 - [x] Update frontend Insights tab to show research data is included in analysis
 - [x] Update tests for research-inclusive analysis
+- [x] Fix login issue on deployed/published version
